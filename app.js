@@ -444,6 +444,8 @@ function getPeriodLabel() {
 function slotGridHTML(dates) {
   const pMap = peopleById();
   const colW = dates.length <= 1 ? 260 : 54;
+  const fitToScreen = dates.length === 7; // 一週檢視直接縮寬塞進畫面，不用橫向滑動
+  const timeColWidth = fitToScreen ? 34 : 48;
   const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" data-hour="${q.hour}" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
@@ -481,15 +483,17 @@ function slotGridHTML(dates) {
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
       rowCells += `<button class="slot-cell" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
     });
-    bodyRows += `<div class="grid-row" style="grid-template-columns:48px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
+    bodyRows += `<div class="grid-row" style="grid-template-columns:${timeColWidth}px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
+
+  const wrapperStyle = fitToScreen ? 'width:100%' : `min-width:${48 + dates.length * colW}px`;
 
   return `
     <div class="grid-card">
       <div class="quick-jump-row">${quickJumps}</div>
       <div id="slotScroll" class="grid-scroll">
-        <div style="min-width:${48 + dates.length * colW}px">
-          <div class="grid-header-row" style="grid-template-columns:48px repeat(${dates.length}, 1fr)">
+        <div style="${wrapperStyle}">
+          <div class="grid-header-row" style="grid-template-columns:${timeColWidth}px repeat(${dates.length}, 1fr)">
             <div class="corner"></div>
             ${headerCells}
           </div>
