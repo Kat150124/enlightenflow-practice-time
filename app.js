@@ -445,7 +445,7 @@ function slotGridHTML(dates) {
   const pMap = peopleById();
   const colW = dates.length <= 1 ? 260 : 54;
   const fitToScreen = dates.length === 7; // 一週檢視直接縮寬塞進畫面，不用橫向滑動
-  const timeColWidth = fitToScreen ? 34 : 48;
+  const timeColWidth = fitToScreen ? 42 : 48;
   const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" data-hour="${q.hour}" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
@@ -456,7 +456,7 @@ function slotGridHTML(dates) {
     return `<div class="grid-head">
       <div class="grid-head-wd">週${wd}</div>
       <div class="grid-head-date">${dateStr.slice(5)}</div>
-      <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')"><span class="fullday-full">整天有空</span><span class="fullday-short">整天</span>${isFullDay ? ' ✓' : ''}</button>
+      <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')">整天${isFullDay ? ' ✓' : ''}</button>
     </div>`;
   }).join('');
 
@@ -489,7 +489,7 @@ function slotGridHTML(dates) {
   const wrapperStyle = fitToScreen ? 'width:100%' : `min-width:${48 + dates.length * colW}px`;
 
   return `
-    <div class="grid-card ${fitToScreen ? 'week-fit' : ''}">
+    <div class="grid-card">
       <div class="quick-jump-row">${quickJumps}</div>
       <div id="slotScroll" class="grid-scroll">
         <div style="${wrapperStyle}">
