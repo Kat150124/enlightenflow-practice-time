@@ -20,7 +20,7 @@ const state = {
   people: [],
   availability: {},
   sessions: [],
-  selectedPersonId: localStorage.getItem('myPersonId') || null,
+  selectedPersonId: null,
   tab: 'calendar',
   viewMode: 'week', // week | twoWeek | month
   anchorDate: new Date(),
@@ -142,7 +142,6 @@ async function refreshAll() {
 
 function pickMe(id) {
   state.selectedPersonId = id;
-  localStorage.setItem('myPersonId', id);
   render();
 }
 
@@ -399,6 +398,8 @@ function renderCalendarTab() {
   document.getElementById('periodLabel').textContent = getPeriodLabel();
 
   const gridContainer = document.getElementById('gridContainer');
+  const prevScrollEl = document.getElementById('slotScroll');
+  const prevScrollTop = prevScrollEl ? prevScrollEl.scrollTop : null;
   if (state.viewMode === 'month') {
     if (state.monthDrillDate) {
       gridContainer.innerHTML = `
@@ -410,6 +411,11 @@ function renderCalendarTab() {
     }
   } else {
     gridContainer.innerHTML = slotGridHTML(getPeriodDates());
+  }
+
+  if (prevScrollTop !== null) {
+    const newScrollEl = document.getElementById('slotScroll');
+    if (newScrollEl) newScrollEl.scrollTop = prevScrollTop;
   }
 }
 
