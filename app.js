@@ -3,15 +3,15 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUu
 // =================================================================
 
 const SLOTS_PER_DAY = 48; // 一天總共 48 個半小時格（內部仍以此為基準）
-const VISIBLE_START_HOUR = 6; // 畫面只顯示從這個時間開始（6 = 早上 6:00），00:00-06:00 不練習所以隱藏
+const VISIBLE_START_HOUR = 8; // 畫面只顯示從這個時間開始（8 = 早上 8:00），之前的時段不練習所以隱藏
 const VISIBLE_START_SLOT = VISIBLE_START_HOUR * 2;
 const VISIBLE_SLOT_COUNT = SLOTS_PER_DAY - VISIBLE_START_SLOT; // 顯示到 24:00 為止
 const ROW_HEIGHT = 30;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
-  { label: '清晨', hour: 6 },
-  { label: '上午', hour: 9 },
+  { label: '早上', hour: 8 },
+  { label: '上午', hour: 10 },
   { label: '下午', hour: 13 },
   { label: '晚上', hour: 18 },
   { label: '深夜', hour: 22 },
