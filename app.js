@@ -439,7 +439,7 @@ function slotGridHTML(dates) {
     return `<div class="grid-head">
       <div class="grid-head-wd">週${wd}</div>
       <div class="grid-head-date">${dateStr.slice(5)}</div>
-      <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')">${isFullDay ? '整天有空 ✓' : '整天有空'}</button>
+      <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')"><span class="fullday-full">整天有空</span><span class="fullday-short">整天</span>${isFullDay ? ' ✓' : ''}</button>
     </div>`;
   }).join('');
 
