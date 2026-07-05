@@ -1,12 +1,11 @@
 :root {
-  --bg: #F4F1EA;
-  --ink: #46423C;
-  --muted: #8C8578;
-  --card: #FFFFFF;
-  --border: #E4DED2;
-  --rose: #B08D82;
-  --sage: #8FA089;
-  --sand: #C7B183;
+  --bg: #F4F1EA;      /* 燕麥背景 */
+  --ink: #46423C;     /* 暖灰棕文字 */
+  --muted: #8C8578;   /* 次要文字灰棕 */
+  --rose: #B08D82;    /* 霧粉，原本是亮桃紅 */
+  --sage: #8FA089;    /* 鼠尾草綠，原本是薄荷綠 */
+  --sand: #C7B183;    /* 燕麥金，原本是亮黃色 */
+  ...
 }
 
 * { box-sizing: border-box; }
