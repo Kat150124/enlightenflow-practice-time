@@ -445,7 +445,7 @@ function slotGridHTML(dates) {
   const pMap = peopleById();
   const colW = dates.length <= 1 ? 260 : 54;
   const fitToScreen = dates.length === 7; // 一週檢視直接縮寬塞進畫面，不用橫向滑動
-  const timeColWidth = fitToScreen ? 42 : 48;
+  const timeColWidth = fitToScreen ? 46 : 48;
   const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" data-hour="${q.hour}" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
