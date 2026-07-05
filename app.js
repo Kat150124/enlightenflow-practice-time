@@ -1,5 +1,5 @@
 // ====== 設定：請把這行換成你自己的 Apps Script Web App 網址 ======
-const API_BASE = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUuwyiai5Cn8yXSVFsERfRiUOtbrC8tvn-ek6QNZSSuAluKJXg/exec';
 // =================================================================
 
 const SLOTS_PER_DAY = 48; // 半小時為一格，涵蓋全天
