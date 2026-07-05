@@ -30,6 +30,7 @@ const state = {
   editSessionId: null,
   editDraft: null,
   pendingChanges: {}, // 拉選/點選後尚未儲存的變更，key: `${dateStr}_${slot}`, value: 'add' | 'remove'
+  viewingSlot: null, // 純瀏覽模式下，目前點開查看詳情的時段 { dateStr, slot }
 };
 
 // ---------- 日期工具 ----------
@@ -150,6 +151,7 @@ async function refreshAll() {
 }
 
 async function pickMe(id) {
+  closeSlotDetail();
   if (state.selectedPersonId === id) {
     // 再點一次自己的名字：取消選取，變成只能查看，不會誤觸時段
     state.selectedPersonId = null;
@@ -278,12 +280,48 @@ function setupDragHandlers() {
   };
   document.addEventListener('pointerup', finishDrag);
   document.addEventListener('pointercancel', finishDrag);
+
+  // 沒有選人（純瀏覽）時，點格子改成顯示詳情，而不是登記時段
+  document.addEventListener('click', (e) => {
+    if (state.selectedPersonId) return;
+    const cell = e.target.closest('.slot-cell');
+    if (!cell) return;
+    showSlotDetail(cell.dataset.date, Number(cell.dataset.slot));
+  });
+}
+
+function showSlotDetail(dateStr, slot) {
+  state.viewingSlot = { dateStr, slot };
+  renderSlotDetail();
+}
+function closeSlotDetail() {
+  state.viewingSlot = null;
+  renderSlotDetail();
+}
+function renderSlotDetail() {
+  const bar = document.getElementById('slotDetailBar');
+  if (!state.viewingSlot) {
+    bar.style.display = 'none';
+    return;
+  }
+  const { dateStr, slot } = state.viewingSlot;
+  const pMap = peopleById();
+  const ids = state.availability[`${dateStr}_${slot}`] || [];
+  const d = parseDateStr(dateStr);
+  const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
+  const timeLabel = `${toShortDate(dateStr)}（週${wd}）${slotToLabel(slot)}–${slotToLabel(slot + 1)}`;
+  const names = ids.length === 0
+    ? '目前沒有人登記'
+    : ids.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
+  document.getElementById('slotDetailText').innerHTML = `<strong>${timeLabel}</strong><span class="slot-detail-names">${names}</span>`;
+  bar.style.display = 'flex';
 }
 
 // ---------- Tab / 檢視模式 ----------
 function switchTab(tab) {
   state.tab = tab;
   localStorage.setItem('lastTab', tab);
+  closeSlotDetail();
   render();
 }
 function setViewMode(mode) {
@@ -604,10 +642,13 @@ function slotGridHTML(dates) {
       if (session) bg = 'rgba(199,177,131,0.35)';
       else if (isMe) bg = `${pMap[state.selectedPersonId]?.color}22`;
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
-      const dots = ids.slice(0, 4).map((id) => personDotHTML(id, pMap, true)).join('');
-      const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
+      const cellContent = ids.length === 0
+        ? ''
+        : ids.length <= 2
+          ? ids.map((id) => personDotHTML(id, pMap, true)).join('')
+          : `${ids.slice(0, 2).map((id) => personDotHTML(id, pMap, true)).join('')}<span class="overflow-count">+${ids.length - 2}</span>`;
       const pendingClass = pendingMode ? 'pending-change' : '';
-      rowCells += `<button class="slot-cell ${pendingClass}" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
+      rowCells += `<button class="slot-cell ${pendingClass}" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}">${marker}${cellContent}</button>`;
     });
     bodyRows += `<div class="grid-row" style="grid-template-columns:${timeColWidth}px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
@@ -727,10 +768,12 @@ function renderMatchTab() {
         <div class="match-card">
           <div class="match-card-header">
             <span class="match-title">${toShortDate(row.dateStr)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
-            <span class="match-count">${row.ids.length}人</span>
+            <div class="match-header-right">
+              <span class="match-count">${row.ids.length}人</span>
+              <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
+            </div>
           </div>
           <div class="chips-row">${chips}</div>
-          <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
           ${draftHTML}
         </div>
       `;
