@@ -118,6 +118,7 @@ function hideError() {
 async function init() {
   document.getElementById('errorBanner').addEventListener('click', hideError);
   document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+  setupDragHandlers();
   await refreshAll();
 }
 
@@ -137,16 +138,89 @@ function pickMe(id) {
   render();
 }
 
-// ---------- 切換時段 ----------
-async function toggleSlot(dateStr, slot) {
+// ---------- 切換時段（含拉選） ----------
+let dragState = null; // { dateStr, startSlot, currentSlot, mode }
+
+async function saveRange(dateStr, startSlot, endSlot, mode) {
   if (!state.selectedPersonId) return;
   try {
-    const data = await apiPost('toggleAvailability', { personId: state.selectedPersonId, dateStr, slot });
+    const data = await apiPost('setRangeAvailability', {
+      personId: state.selectedPersonId,
+      dateStr,
+      startSlot,
+      endSlot,
+      mode,
+    });
     applyData(data);
   } catch (e) {
     showError('儲存時段失敗，請再試一次');
   }
   render();
+}
+
+async function toggleFullDay(dateStr) {
+  if (!state.selectedPersonId) return;
+  try {
+    const data = await apiPost('toggleFullDay', { personId: state.selectedPersonId, dateStr });
+    applyData(data);
+  } catch (e) {
+    showError('儲存整天時段失敗，請再試一次');
+  }
+  render();
+}
+
+function applyDragPreview() {
+  if (!dragState) return;
+  const lo = Math.min(dragState.startSlot, dragState.currentSlot);
+  const hi = Math.max(dragState.startSlot, dragState.currentSlot);
+  document.querySelectorAll(`.slot-cell[data-date="${dragState.dateStr}"]`).forEach((cell) => {
+    const s = Number(cell.dataset.slot);
+    cell.classList.toggle('drag-preview', s >= lo && s <= hi);
+    cell.classList.toggle('drag-remove', dragState.mode === 'remove' && s >= lo && s <= hi);
+  });
+}
+
+function clearDragPreview() {
+  document.querySelectorAll('.slot-cell.drag-preview').forEach((cell) => {
+    cell.classList.remove('drag-preview', 'drag-remove');
+  });
+}
+
+function setupDragHandlers() {
+  document.addEventListener('pointerdown', (e) => {
+    const cell = e.target.closest('.slot-cell');
+    if (!cell || cell.disabled) return;
+    if (!state.selectedPersonId) return;
+    const dateStr = cell.dataset.date;
+    const slot = Number(cell.dataset.slot);
+    const ids = state.availability[`${dateStr}_${slot}`] || [];
+    const mode = ids.includes(state.selectedPersonId) ? 'remove' : 'add';
+    dragState = { dateStr, startSlot: slot, currentSlot: slot, mode };
+    applyDragPreview();
+    e.preventDefault();
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!dragState) return;
+    e.preventDefault();
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('.slot-cell');
+    if (!cell || cell.dataset.date !== dragState.dateStr) return;
+    dragState.currentSlot = Number(cell.dataset.slot);
+    applyDragPreview();
+  });
+
+  const finishDrag = () => {
+    if (!dragState) return;
+    const { dateStr, startSlot, currentSlot, mode } = dragState;
+    const lo = Math.min(startSlot, currentSlot);
+    const hi = Math.max(startSlot, currentSlot);
+    clearDragPreview();
+    dragState = null;
+    saveRange(dateStr, lo, hi + 1, mode);
+  };
+  document.addEventListener('pointerup', finishDrag);
+  document.addEventListener('pointercancel', finishDrag);
 }
 
 // ---------- Tab / 檢視模式 ----------
@@ -185,6 +259,9 @@ function scrollToHour(hour) {
     const idx = slotToDisplayIndex(hour * 2);
     el.scrollTo({ top: idx * ROW_HEIGHT, behavior: 'smooth' });
   }
+  document.querySelectorAll('.quick-jump').forEach((btn) => {
+    btn.classList.toggle('active', Number(btn.dataset.hour) === hour);
+  });
 }
 
 // ---------- 可約時段 ----------
@@ -352,11 +429,18 @@ function getPeriodLabel() {
 function slotGridHTML(dates) {
   const pMap = peopleById();
   const colW = dates.length <= 1 ? 260 : 54;
-  const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
+  const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" data-hour="${q.hour}" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
     const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
-    return `<div class="grid-head"><div class="grid-head-wd">週${wd}</div><div class="grid-head-date">${toDateStr(d).slice(5)}</div></div>`;
+    const dateStr = toDateStr(d);
+    const isFullDay = state.selectedPersonId && Array.from({ length: SLOTS_PER_DAY }, (_, s) => s)
+      .every((s) => (state.availability[`${dateStr}_${s}`] || []).includes(state.selectedPersonId));
+    return `<div class="grid-head">
+      <div class="grid-head-wd">週${wd}</div>
+      <div class="grid-head-date">${dateStr.slice(5)}</div>
+      <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')">${isFullDay ? '整天有空 ✓' : '整天有空'}</button>
+    </div>`;
   }).join('');
 
   let bodyRows = '';
@@ -381,7 +465,7 @@ function slotGridHTML(dates) {
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const dots = ids.slice(0, 4).map((id) => `<span class="mini-dot" title="${escapeHtml(pMap[id]?.name || '')}" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
-      rowCells += `<button class="slot-cell" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleSlot('${dateStr}', ${slot})">${marker}${dots}${overflow}</button>`;
+      rowCells += `<button class="slot-cell" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
     });
     bodyRows += `<div class="grid-row" style="grid-template-columns:48px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
