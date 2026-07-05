@@ -1,8 +1,10 @@
 // ====== 設定：請把這行換成你自己的 Apps Script Web App 網址 ======
-const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUuwyiai5Cn8yXSVFsERfRiUOtbrC8tvn-ek6QNZSSuAluKJXg/exec';
+const API_BASE = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // =================================================================
 
 const SLOTS_PER_DAY = 48; // 半小時為一格，涵蓋全天
+const DAY_START_HOUR = 6; // 每天格線從這個時間開始顯示（例如 6 代表從早上 6:00 開始，一路到隔天凌晨 5:30）
+const DAY_START_SLOT = DAY_START_HOUR * 2;
 const ROW_HEIGHT = 24;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -58,6 +60,9 @@ function slotToLabel(slot) {
   const h = Math.floor(slot / 2);
   const m = (slot % 2) * 30;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function slotToDisplayIndex(slot) {
+  return (slot - DAY_START_SLOT + SLOTS_PER_DAY) % SLOTS_PER_DAY;
 }
 function slotEndDateTime(dateStr, endSlotExclusive) {
   const d = parseDateStr(dateStr);
@@ -176,7 +181,10 @@ function backToMonth() {
 }
 function scrollToHour(hour) {
   const el = document.getElementById('slotScroll');
-  if (el) el.scrollTo({ top: hour * 2 * ROW_HEIGHT, behavior: 'smooth' });
+  if (el) {
+    const idx = slotToDisplayIndex(hour * 2);
+    el.scrollTo({ top: idx * ROW_HEIGHT, behavior: 'smooth' });
+  }
 }
 
 // ---------- 可約時段 ----------
@@ -352,9 +360,13 @@ function slotGridHTML(dates) {
   }).join('');
 
   let bodyRows = '';
-  for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
-    const isHour = slot % 2 === 0;
-    const timeLabel = isHour ? slotToLabel(slot) : '';
+  for (let i = 0; i < SLOTS_PER_DAY; i++) {
+    const absoluteSlot = DAY_START_SLOT + i;
+    const slot = absoluteSlot % SLOTS_PER_DAY; // 實際對應到的資料時段
+    const isHour = i % 2 === 0;
+    const displayHour = Math.floor(absoluteSlot / 2);
+    const displayMin = (absoluteSlot % 2) * 30;
+    const timeLabel = isHour ? `${String(displayHour).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
     let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid var(--border)' : '1px solid #f7f2ea'}">${timeLabel}</div>`;
     dates.forEach((d) => {
       const dateStr = toDateStr(d);
