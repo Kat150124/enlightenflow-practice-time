@@ -78,16 +78,24 @@ body {
   font-family: 'Noto Serif TC', serif;
   font-weight: 700;
   font-size: 17px;
-  padding: 13px 0;
+  padding: 13px 4px;
   border: none;
   border-radius: 999px;
   background: var(--card);
   color: var(--muted);
   cursor: pointer;
   transition: all .15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .tabs { gap: 6px; padding: 0 16px; }
+  .tab-btn { font-size: 13px; padding: 11px 2px; }
 }
 .tab-btn.active#tabCalendarBtn { background: var(--rose); color: #fff; box-shadow: 0 4px 10px rgba(176,141,130,0.35); }
 .tab-btn.active#tabMatchBtn { background: var(--sage); color: #fff; box-shadow: 0 4px 10px rgba(143,160,137,0.35); }
+.tab-btn.active#tabConfirmedBtn { background: var(--sand); color: #fff; box-shadow: 0 4px 10px rgba(199,177,131,0.35); }
 
 .tab-content { padding: 0 24px; }
 

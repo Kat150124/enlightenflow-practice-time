@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🌱 啟萌培訓團練時間</title>
+<title>啟萌培訓團練時間</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
@@ -21,6 +21,7 @@
     <div class="tabs">
       <button id="tabCalendarBtn" class="tab-btn active" onclick="switchTab('calendar')">📅 日曆登記</button>
       <button id="tabMatchBtn" class="tab-btn" onclick="switchTab('match')">🌿 可約時段</button>
+      <button id="tabConfirmedBtn" class="tab-btn" onclick="switchTab('confirmed')">🎯 已確認練習</button>
     </div>
 
     <!-- 日曆登記頁 -->
@@ -49,11 +50,11 @@
     <!-- 可約時段頁 -->
     <div id="matchTab" class="tab-content" style="display:none">
       <div id="matchList"></div>
+    </div>
 
-      <div class="confirmed-section">
-        <p class="section-title">🎯 已確認的練習</p>
-        <div id="confirmedList"></div>
-      </div>
+    <!-- 已確認練習頁 -->
+    <div id="confirmedTab" class="tab-content" style="display:none">
+      <div id="confirmedList"></div>
     </div>
   </div>
 

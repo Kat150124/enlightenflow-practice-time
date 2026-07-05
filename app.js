@@ -379,11 +379,14 @@ async function deleteSessionById(id) {
 function render() {
   document.getElementById('tabCalendarBtn').classList.toggle('active', state.tab === 'calendar');
   document.getElementById('tabMatchBtn').classList.toggle('active', state.tab === 'match');
+  document.getElementById('tabConfirmedBtn').classList.toggle('active', state.tab === 'confirmed');
   document.getElementById('calendarTab').style.display = state.tab === 'calendar' ? 'block' : 'none';
   document.getElementById('matchTab').style.display = state.tab === 'match' ? 'block' : 'none';
+  document.getElementById('confirmedTab').style.display = state.tab === 'confirmed' ? 'block' : 'none';
 
   if (state.tab === 'calendar') renderCalendarTab();
-  else renderMatchTab();
+  else if (state.tab === 'match') renderMatchTab();
+  else renderConfirmedTab();
 }
 
 function renderCalendarTab() {
@@ -609,7 +612,10 @@ function renderMatchTab() {
       `;
     }).join('');
   }
+}
 
+function renderConfirmedTab() {
+  const pMap = peopleById();
   const confirmedEl = document.getElementById('confirmedList');
   const sorted = [...state.sessions].sort((a, b) => {
     const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
