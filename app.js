@@ -11,10 +11,8 @@ const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
   { label: '早上', hour: 8 },
-  { label: '上午', hour: 10 },
   { label: '下午', hour: 13 },
   { label: '晚上', hour: 18 },
-  { label: '深夜', hour: 22 },
 ];
 
 const state = {
@@ -31,6 +29,7 @@ const state = {
   draft: null,
   editSessionId: null,
   editDraft: null,
+  pendingChanges: {}, // 拉選/點選後尚未儲存的變更，key: `${dateStr}_${slot}`, value: 'add' | 'remove'
 };
 
 // ---------- 日期工具 ----------
@@ -150,29 +149,31 @@ async function refreshAll() {
   render();
 }
 
-function pickMe(id) {
+async function pickMe(id) {
+  if (state.selectedPersonId === id) {
+    // 再點一次自己的名字：取消選取，變成只能查看，不會誤觸時段
+    state.selectedPersonId = null;
+    render();
+    return;
+  }
+  if (Object.keys(state.pendingChanges).length > 0 && state.selectedPersonId) {
+    // 切換成別人之前，先把目前的暫存變更存起來，避免搞混是誰的時段
+    await savePendingChanges();
+  }
   state.selectedPersonId = id;
   render();
 }
 
-// ---------- 切換時段（含拉選） ----------
+// ---------- 切換時段（含拉選，先暫存、按儲存才送出） ----------
 let dragState = null; // { dateStr, startSlot, currentSlot, mode }
 
-async function saveRange(dateStr, startSlot, endSlot, mode) {
-  if (!state.selectedPersonId) return;
-  try {
-    const data = await apiPost('setRangeAvailability', {
-      personId: state.selectedPersonId,
-      dateStr,
-      startSlot,
-      endSlot,
-      mode,
-    });
-    applyData(data);
-  } catch (e) {
-    showError('儲存時段失敗，請再試一次');
-  }
-  render();
+function personInSlot(dateStr, slot) {
+  const key = `${dateStr}_${slot}`;
+  const base = (state.availability[key] || []).includes(state.selectedPersonId);
+  const pending = state.pendingChanges[key];
+  if (pending === 'add') return true;
+  if (pending === 'remove') return false;
+  return base;
 }
 
 async function toggleFullDay(dateStr) {
@@ -183,6 +184,29 @@ async function toggleFullDay(dateStr) {
   } catch (e) {
     showError('儲存整天時段失敗，請再試一次');
   }
+  render();
+}
+
+async function savePendingChanges() {
+  const entries = Object.entries(state.pendingChanges);
+  if (entries.length === 0) return;
+  const personId = state.selectedPersonId;
+  const changes = entries.map(([key, mode]) => {
+    const idx = key.lastIndexOf('_');
+    return { dateStr: key.slice(0, idx), slot: Number(key.slice(idx + 1)), mode };
+  });
+  try {
+    const data = await apiPost('applyChanges', { personId, changes });
+    applyData(data);
+  } catch (e) {
+    showError('儲存時段失敗，請再試一次');
+  }
+  state.pendingChanges = {};
+  render();
+}
+
+function discardPendingChanges() {
+  state.pendingChanges = {};
   render();
 }
 
@@ -210,8 +234,7 @@ function setupDragHandlers() {
     if (!state.selectedPersonId) return;
     const dateStr = cell.dataset.date;
     const slot = Number(cell.dataset.slot);
-    const ids = state.availability[`${dateStr}_${slot}`] || [];
-    const mode = ids.includes(state.selectedPersonId) ? 'remove' : 'add';
+    const mode = personInSlot(dateStr, slot) ? 'remove' : 'add';
     dragState = { dateStr, startSlot: slot, currentSlot: slot, mode };
     applyDragPreview();
     e.preventDefault();
@@ -234,7 +257,10 @@ function setupDragHandlers() {
     const hi = Math.max(startSlot, currentSlot);
     clearDragPreview();
     dragState = null;
-    saveRange(dateStr, lo, hi + 1, mode);
+    for (let s = lo; s <= hi; s++) {
+      state.pendingChanges[`${dateStr}_${s}`] = mode;
+    }
+    render();
   };
   document.addEventListener('pointerup', finishDrag);
   document.addEventListener('pointercancel', finishDrag);
@@ -289,6 +315,7 @@ function computeMatches() {
     if (!ids || ids.length === 0) return;
     const [dateStr, slotStr] = key.split('_');
     const slot = Number(slotStr);
+    if (slot < VISIBLE_START_SLOT) return; // 排除畫面已隱藏的時段（例如改成 8 點開始前的舊資料）
     if (!byDate[dateStr]) byDate[dateStr] = [];
     byDate[dateStr].push({ slot, ids });
   });
@@ -447,6 +474,13 @@ function render() {
   document.getElementById('matchTab').style.display = state.tab === 'match' ? 'block' : 'none';
   document.getElementById('confirmedTab').style.display = state.tab === 'confirmed' ? 'block' : 'none';
 
+  const pendingCount = Object.keys(state.pendingChanges).length;
+  const pendingBar = document.getElementById('pendingBar');
+  pendingBar.style.display = pendingCount > 0 ? 'flex' : 'none';
+  if (pendingCount > 0) {
+    document.getElementById('pendingCount').textContent = `已選取 ${pendingCount} 個時段，尚未儲存`;
+  }
+
   if (state.tab === 'calendar') renderCalendarTab();
   else if (state.tab === 'match') renderMatchTab();
   else renderConfirmedTab();
@@ -542,7 +576,14 @@ function slotGridHTML(dates) {
     dates.forEach((d) => {
       const dateStr = toDateStr(d);
       const key = `${dateStr}_${slot}`;
-      const ids = state.availability[key] || [];
+      const baseIds = state.availability[key] || [];
+      const pendingMode = state.pendingChanges[key];
+      let ids = baseIds;
+      if (pendingMode === 'add' && state.selectedPersonId && !baseIds.includes(state.selectedPersonId)) {
+        ids = [...baseIds, state.selectedPersonId];
+      } else if (pendingMode === 'remove' && state.selectedPersonId) {
+        ids = baseIds.filter((id) => id !== state.selectedPersonId);
+      }
       const isMe = state.selectedPersonId && ids.includes(state.selectedPersonId);
       const session = state.sessions.find((s) => s.dateStr === dateStr && slot >= s.startSlot && slot < s.endSlot);
       let bg = 'transparent';
@@ -551,7 +592,8 @@ function slotGridHTML(dates) {
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const dots = ids.slice(0, 4).map((id) => `<span class="mini-dot" title="${escapeHtml(pMap[id]?.name || '')}" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
-      rowCells += `<button class="slot-cell" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
+      const pendingClass = pendingMode ? 'pending-change' : '';
+      rowCells += `<button class="slot-cell ${pendingClass}" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
     });
     bodyRows += `<div class="grid-row" style="grid-template-columns:${timeColWidth}px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
@@ -587,7 +629,10 @@ function monthGridHTML() {
     const isCurrentMonth = d.getMonth() === state.anchorDate.getMonth();
     const ids = new Set();
     Object.entries(state.availability).forEach(([key, arr]) => {
-      if (key.startsWith(dateStr + '_')) arr.forEach((id) => ids.add(id));
+      if (!key.startsWith(dateStr + '_')) return;
+      const slot = Number(key.split('_')[1]);
+      if (slot < VISIBLE_START_SLOT) return;
+      arr.forEach((id) => ids.add(id));
     });
     const idsArr = [...ids];
     const hasSession = state.sessions.some((s) => s.dateStr === dateStr);

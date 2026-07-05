@@ -6,7 +6,7 @@
 <title>🌱 啟萌培訓團練時間</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4" />
+<link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
   <div class="app">
@@ -44,7 +44,15 @@
       </div>
 
       <div id="gridContainer"></div>
-      <p class="tip">💡 在格子上「按住拖曳」可以一次選取一段時間，放開後自動儲存。金色 🎯 底色代表已確認的練習時間。要捲動找時間，可以用上面的快速跳轉按鈕。</p>
+      <p class="tip">💡 在格子上點一下或按住拖曳可以選取時間，選完後按下面的「儲存」才會真的存進去。金色 🎯 底色代表已確認的練習時間。</p>
+    </div>
+
+    <div id="pendingBar" class="pending-bar" style="display:none">
+      <span id="pendingCount" class="pending-count"></span>
+      <div class="pending-actions">
+        <button class="btn-text" onclick="discardPendingChanges()">清除</button>
+        <button class="btn-primary" onclick="savePendingChanges()">💾 儲存</button>
+      </div>
     </div>
 
     <!-- 可約時段頁 -->
@@ -59,6 +67,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
