@@ -92,12 +92,17 @@ async function apiGetAll() {
   return res.json();
 }
 async function apiPost(action, payload) {
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, ...payload }),
-  });
-  return res.json();
+  setSaving(true);
+  try {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    return await res.json();
+  } finally {
+    setSaving(false);
+  }
 }
 function applyData(data) {
   if (data.error) { showError(data.error); return; }
@@ -112,6 +117,9 @@ function showError(msg) {
 }
 function hideError() {
   document.getElementById('errorBanner').style.display = 'none';
+}
+function setSaving(isSaving) {
+  document.getElementById('savingIndicator').style.display = isSaving ? 'block' : 'none';
 }
 
 // ---------- 初始化 ----------
