@@ -22,7 +22,7 @@ const state = {
   availability: {},
   sessions: [],
   selectedPersonId: null,
-  tab: 'calendar',
+  tab: localStorage.getItem('lastTab') || 'calendar',
   viewMode: 'week', // week | twoWeek | month
   anchorDate: new Date(),
   monthDrillDate: null,
@@ -240,6 +240,7 @@ function setupDragHandlers() {
 // ---------- Tab / 檢視模式 ----------
 function switchTab(tab) {
   state.tab = tab;
+  localStorage.setItem('lastTab', tab);
   render();
 }
 function setViewMode(mode) {
