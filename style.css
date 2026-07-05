@@ -369,12 +369,14 @@ body {
 
 .confirmed-section { margin-top: 28px; }
 .section-title { font-family: 'Noto Serif TC', serif; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
-.session-card {
+.session-card-wrap {
   background: var(--card);
   border-radius: 22px;
   padding: 14px 20px;
   box-shadow: 0 1px 6px rgba(70,66,60,0.08);
   margin-bottom: 10px;
+}
+.session-card {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -383,4 +385,20 @@ body {
 .session-time { font-size: 15px; font-weight: 700; }
 .past-label { color: var(--muted); font-weight: 400; }
 .session-note { font-size: 14px; color: var(--muted); margin: 5px 0 0; }
+.session-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-edit {
+  border: none;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-edit.active { background: var(--ink); color: #fff; }
 .btn-delete { border: none; background: none; color: var(--muted); font-size: 18px; cursor: pointer; flex-shrink: 0; }

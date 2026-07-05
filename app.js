@@ -28,6 +28,8 @@ const state = {
   monthDrillDate: null,
   draftKey: null,
   draft: null,
+  editSessionId: null,
+  editDraft: null,
 };
 
 // ---------- 日期工具 ----------
@@ -375,6 +377,63 @@ async function deleteSessionById(id) {
   render();
 }
 
+function openSessionEdit(id) {
+  if (state.editSessionId === id) {
+    state.editSessionId = null;
+    state.editDraft = null;
+  } else {
+    const s = state.sessions.find((s) => s.id === id);
+    if (!s) return;
+    state.editSessionId = id;
+    state.editDraft = {
+      dateStr: s.dateStr,
+      startSlot: s.startSlot,
+      endSlot: s.endSlot,
+      participantIds: new Set(s.participantIds),
+      note: s.note || '',
+    };
+  }
+  render();
+}
+function toggleEditParticipant(id) {
+  if (!state.editDraft) return;
+  if (state.editDraft.participantIds.has(id)) state.editDraft.participantIds.delete(id);
+  else state.editDraft.participantIds.add(id);
+  render();
+}
+function updateEditField(field, value) {
+  if (!state.editDraft) return;
+  state.editDraft[field] = field === 'startSlot' || field === 'endSlot' ? Number(value) : value;
+}
+function cancelSessionEdit() {
+  state.editSessionId = null;
+  state.editDraft = null;
+  render();
+}
+async function saveSessionEdit() {
+  const d = state.editDraft;
+  const id = state.editSessionId;
+  if (!d || !id) return;
+  if (d.endSlot <= d.startSlot) { showError('結束時間要晚於開始時間喔'); return; }
+  if (d.participantIds.size === 0) { showError('至少要選一位參加者'); return; }
+  try {
+    const data = await apiPost('updateSession', {
+      id,
+      dateStr: d.dateStr,
+      startSlot: d.startSlot,
+      endSlot: d.endSlot,
+      participantIds: [...d.participantIds],
+      note: d.note.trim(),
+    });
+    applyData(data);
+  } catch (e) {
+    showError('更新練習時間失敗，請再試一次');
+  }
+  state.editSessionId = null;
+  state.editDraft = null;
+  render();
+}
+
 // ================= 畫面渲染 =================
 function render() {
   document.getElementById('tabCalendarBtn').classList.toggle('active', state.tab === 'calendar');
@@ -630,14 +689,57 @@ function renderConfirmedTab() {
       const d = parseDateStr(s.dateStr);
       const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
       const chips = s.participantIds.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
-      return `
-        <div class="session-card" style="opacity:${isPast ? 0.5 : 1}">
-          <div class="session-info">
-            <div class="session-time">${toShortDate(s.dateStr)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}${isPast ? '<span class="past-label"> ・已過</span>' : ''}</div>
-            <div class="chips-row">${chips}</div>
-            ${s.note ? `<p class="session-note">${escapeHtml(s.note)}</p>` : ''}
+      const isEditing = state.editSessionId === s.id;
+
+      let editHTML = '';
+      if (isEditing && state.editDraft) {
+        const d0 = state.editDraft;
+        const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i).map((slot) => `<option value="${slot}" ${d0.startSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
+        const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i + 1).map((slot) => `<option value="${slot}" ${d0.endSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
+        const participantChips = state.people.map((p) => {
+          const checked = d0.participantIds.has(p.id);
+          return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleEditParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
+        }).join('');
+
+        editHTML = `
+          <div class="draft-form">
+            <div class="draft-row">
+              <label>日期</label>
+              <input type="date" value="${d0.dateStr}" oninput="updateEditField('dateStr', this.value)" />
+            </div>
+            <div class="draft-row">
+              <label>時間</label>
+              <select onchange="updateEditField('startSlot', this.value)">${startOptions}</select>
+              <span class="to-label">到</span>
+              <select onchange="updateEditField('endSlot', this.value)">${endOptions}</select>
+            </div>
+            <div class="draft-row column">
+              <label>參加者</label>
+              <div class="chips-row">${participantChips}</div>
+            </div>
+            <input class="note-input" value="${escapeHtml(d0.note)}" placeholder="備註（選填）" oninput="updateEditField('note', this.value)" />
+            <div class="draft-actions">
+              <button class="btn-primary" onclick="saveSessionEdit()">儲存修改</button>
+              <button class="btn-text" onclick="cancelSessionEdit()">取消</button>
+            </div>
           </div>
-          <button class="btn-delete" onclick="deleteSessionById('${s.id}')">✕</button>
+        `;
+      }
+
+      return `
+        <div class="session-card-wrap" style="opacity:${isPast ? 0.5 : 1}">
+          <div class="session-card">
+            <div class="session-info">
+              <div class="session-time">${toShortDate(s.dateStr)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}${isPast ? '<span class="past-label"> ・已過</span>' : ''}</div>
+              <div class="chips-row">${chips}</div>
+              ${s.note ? `<p class="session-note">${escapeHtml(s.note)}</p>` : ''}
+            </div>
+            <div class="session-actions">
+              <button class="btn-edit ${isEditing ? 'active' : ''}" onclick="openSessionEdit('${s.id}')">✏️</button>
+              <button class="btn-delete" onclick="deleteSessionById('${s.id}')">✕</button>
+            </div>
+          </div>
+          ${editHTML}
         </div>
       `;
     }).join('');
