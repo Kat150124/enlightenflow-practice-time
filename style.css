@@ -389,6 +389,8 @@ body {
 
 .confirmed-section { margin-top: 28px; }
 .section-title { font-family: 'Noto Serif TC', serif; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.section-subtitle { font-size: 14px; font-weight: 700; color: var(--muted); margin: 4px 0 10px; }
+.history-subtitle { margin-top: 24px; }
 .session-card-wrap {
   background: var(--card);
   border-radius: 22px;

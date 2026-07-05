@@ -727,76 +727,100 @@ function renderMatchTab() {
 function renderConfirmedTab() {
   const pMap = peopleById();
   const confirmedEl = document.getElementById('confirmedList');
-  const sorted = [...state.sessions].sort((a, b) => {
-    const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
-    const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
-    return ak.localeCompare(bk);
-  });
+  const now = new Date();
+  const upcoming = state.sessions
+    .filter((s) => slotEndDateTime(s.dateStr, s.endSlot) > now)
+    .sort((a, b) => {
+      const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
+      const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
+      return ak.localeCompare(bk);
+    });
+  const history = state.sessions
+    .filter((s) => slotEndDateTime(s.dateStr, s.endSlot) <= now)
+    .sort((a, b) => {
+      const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
+      const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
+      return bk.localeCompare(ak); // 最近的歷史紀錄排前面
+    });
+
   if (!state.loaded) {
     confirmedEl.innerHTML = `<p class="hint small">⏳ 讀取中…</p>`;
-  } else if (sorted.length === 0) {
-    confirmedEl.innerHTML = `<p class="hint small">還沒有安排任何練習時間</p>`;
-  } else {
-    confirmedEl.innerHTML = sorted.map((s) => {
-      const isPast = slotEndDateTime(s.dateStr, s.endSlot) <= new Date();
-      const d = parseDateStr(s.dateStr);
-      const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
-      const chips = s.participantIds.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
-      const isEditing = state.editSessionId === s.id;
-
-      let editHTML = '';
-      if (isEditing && state.editDraft) {
-        const d0 = state.editDraft;
-        const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i).map((slot) => `<option value="${slot}" ${d0.startSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
-        const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i + 1).map((slot) => `<option value="${slot}" ${d0.endSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
-        const participantChips = state.people.map((p) => {
-          const checked = d0.participantIds.has(p.id);
-          return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleEditParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
-        }).join('');
-
-        editHTML = `
-          <div class="draft-form">
-            <div class="draft-row">
-              <label>日期</label>
-              <input type="date" value="${d0.dateStr}" oninput="updateEditField('dateStr', this.value)" />
-            </div>
-            <div class="draft-row">
-              <label>時間</label>
-              <select onchange="updateEditField('startSlot', this.value)">${startOptions}</select>
-              <span class="to-label">到</span>
-              <select onchange="updateEditField('endSlot', this.value)">${endOptions}</select>
-            </div>
-            <div class="draft-row column">
-              <label>參加者</label>
-              <div class="chips-row">${participantChips}</div>
-            </div>
-            <input class="note-input" value="${escapeHtml(d0.note)}" placeholder="備註（選填）" oninput="updateEditField('note', this.value)" />
-            <div class="draft-actions">
-              <button class="btn-primary" onclick="saveSessionEdit()">儲存修改</button>
-              <button class="btn-text" onclick="cancelSessionEdit()">取消</button>
-            </div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="session-card-wrap" style="opacity:${isPast ? 0.5 : 1}">
-          <div class="session-card">
-            <div class="session-info">
-              <div class="session-time">${toShortDate(s.dateStr)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}${isPast ? '<span class="past-label"> ・已過</span>' : ''}</div>
-              <div class="chips-row">${chips}</div>
-              ${s.note ? `<p class="session-note">${escapeHtml(s.note)}</p>` : ''}
-            </div>
-            <div class="session-actions">
-              <button class="btn-edit ${isEditing ? 'active' : ''}" onclick="openSessionEdit('${s.id}')">✏️</button>
-              <button class="btn-delete" onclick="deleteSessionById('${s.id}')">✕</button>
-            </div>
-          </div>
-          ${editHTML}
-        </div>
-      `;
-    }).join('');
+    return;
   }
+
+  const upcomingHTML = upcoming.length === 0
+    ? `<p class="hint small">目前沒有即將進行的練習</p>`
+    : upcoming.map((s) => sessionCardHTML(s, pMap, false)).join('');
+
+  const historyHTML = history.length === 0
+    ? `<p class="hint small">還沒有歷史紀錄</p>`
+    : history.map((s) => sessionCardHTML(s, pMap, true)).join('');
+
+  confirmedEl.innerHTML = `
+    <p class="section-subtitle">🔜 即將進行</p>
+    ${upcomingHTML}
+    <p class="section-subtitle history-subtitle">🗂 歷史紀錄</p>
+    ${historyHTML}
+  `;
+}
+
+function sessionCardHTML(s, pMap, isPast) {
+  const d = parseDateStr(s.dateStr);
+  const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
+  const chips = s.participantIds.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
+  const isEditing = state.editSessionId === s.id;
+
+  let editHTML = '';
+  if (isEditing && state.editDraft) {
+    const d0 = state.editDraft;
+    const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i).map((slot) => `<option value="${slot}" ${d0.startSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
+    const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, i) => VISIBLE_START_SLOT + i + 1).map((slot) => `<option value="${slot}" ${d0.endSlot === slot ? 'selected' : ''}>${slotToLabel(slot)}</option>`).join('');
+    const participantChips = state.people.map((p) => {
+      const checked = d0.participantIds.has(p.id);
+      return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleEditParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
+    }).join('');
+
+    editHTML = `
+      <div class="draft-form">
+        <div class="draft-row">
+          <label>日期</label>
+          <input type="date" value="${d0.dateStr}" oninput="updateEditField('dateStr', this.value)" />
+        </div>
+        <div class="draft-row">
+          <label>時間</label>
+          <select onchange="updateEditField('startSlot', this.value)">${startOptions}</select>
+          <span class="to-label">到</span>
+          <select onchange="updateEditField('endSlot', this.value)">${endOptions}</select>
+        </div>
+        <div class="draft-row column">
+          <label>參加者</label>
+          <div class="chips-row">${participantChips}</div>
+        </div>
+        <input class="note-input" value="${escapeHtml(d0.note)}" placeholder="備註（選填）" oninput="updateEditField('note', this.value)" />
+        <div class="draft-actions">
+          <button class="btn-primary" onclick="saveSessionEdit()">儲存修改</button>
+          <button class="btn-text" onclick="cancelSessionEdit()">取消</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="session-card-wrap" style="opacity:${isPast ? 0.6 : 1}">
+      <div class="session-card">
+        <div class="session-info">
+          <div class="session-time">${toShortDate(s.dateStr)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}</div>
+          <div class="chips-row">${chips}</div>
+          ${s.note ? `<p class="session-note">${escapeHtml(s.note)}</p>` : ''}
+        </div>
+        <div class="session-actions">
+          <button class="btn-edit ${isEditing ? 'active' : ''}" onclick="openSessionEdit('${s.id}')">✏️</button>
+          <button class="btn-delete" onclick="deleteSessionById('${s.id}')">✕</button>
+        </div>
+      </div>
+      ${editHTML}
+    </div>
+  `;
 }
 
 init();
