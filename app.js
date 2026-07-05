@@ -18,6 +18,7 @@ const QUICK_JUMPS = [
 ];
 
 const state = {
+  loaded: false,
   people: [],
   availability: {},
   sessions: [],
@@ -144,6 +145,7 @@ async function refreshAll() {
   } catch (e) {
     showError('讀取資料失敗，請確認 app.js 裡的 API_BASE 網址設定正確');
   }
+  state.loaded = true;
   render();
 }
 
@@ -450,7 +452,7 @@ function render() {
 }
 
 function renderCalendarTab() {
-  document.getElementById('noPeopleHint').style.display = state.people.length === 0 ? 'block' : 'none';
+  document.getElementById('noPeopleHint').style.display = (state.loaded && state.people.length === 0) ? 'block' : 'none';
   document.getElementById('pickMeHint').style.display = state.people.length > 0 && !state.selectedPersonId ? 'block' : 'none';
   document.getElementById('peopleChips').innerHTML = state.people.map((p) => {
     const active = state.selectedPersonId === p.id;
@@ -610,7 +612,9 @@ function renderMatchTab() {
   const pMap = peopleById();
 
   const listEl = document.getElementById('matchList');
-  if (matches.length === 0) {
+  if (!state.loaded) {
+    listEl.innerHTML = `<p class="hint">⏳ 讀取中…</p>`;
+  } else if (matches.length === 0) {
     listEl.innerHTML = `<p class="hint">${
       !hasAnyAvailability
         ? '還沒有人登記任何時段，先到「日曆登記」頁面填寫吧！'
@@ -682,7 +686,9 @@ function renderConfirmedTab() {
     const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
     return ak.localeCompare(bk);
   });
-  if (sorted.length === 0) {
+  if (!state.loaded) {
+    confirmedEl.innerHTML = `<p class="hint small">⏳ 讀取中…</p>`;
+  } else if (sorted.length === 0) {
     confirmedEl.innerHTML = `<p class="hint small">還沒有安排任何練習時間</p>`;
   } else {
     confirmedEl.innerHTML = sorted.map((s) => {
