@@ -1,9 +1,10 @@
 // ====== 設定：請把這行換成你自己的 Apps Script Web App 網址 ======
-const API_BASE = 'https://script.google.com/macros/library/d/1poIEAiveFEqIjoqlicAV_Xgm6RpEa3iV1c03SASm99mIEyXkKDvDwcXg/1';
+const API_BASE = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // =================================================================
 
 const SLOTS_PER_DAY = 48; // 半小時為一格，涵蓋全天
 const ROW_HEIGHT = 24;
+const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
   { label: '凌晨', hour: 0 },
@@ -22,7 +23,6 @@ const state = {
   viewMode: 'week', // week | twoWeek | month
   anchorDate: new Date(),
   monthDrillDate: null,
-  minThreshold: 2,
   draftKey: null,
   draft: null,
 };
@@ -113,9 +113,6 @@ function hideError() {
 async function init() {
   document.getElementById('errorBanner').addEventListener('click', hideError);
   document.getElementById('refreshBtn').addEventListener('click', refreshAll);
-  document.getElementById('newNameInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleAddPerson();
-  });
   await refreshAll();
 }
 
@@ -126,23 +123,6 @@ async function refreshAll() {
   } catch (e) {
     showError('讀取資料失敗，請確認 app.js 裡的 API_BASE 網址設定正確');
   }
-  render();
-}
-
-// ---------- 加入名字 ----------
-async function handleAddPerson() {
-  const input = document.getElementById('newNameInput');
-  const name = input.value.trim();
-  if (!name) return;
-  try {
-    const data = await apiPost('addPerson', { name });
-    applyData(data);
-    const person = state.people.find((p) => p.name === name);
-    if (person) pickMe(person.id, false);
-  } catch (e) {
-    showError('新增名字失敗，請再試一次');
-  }
-  input.value = '';
   render();
 }
 
@@ -199,12 +179,7 @@ function scrollToHour(hour) {
   if (el) el.scrollTo({ top: hour * 2 * ROW_HEIGHT, behavior: 'smooth' });
 }
 
-// ---------- 媒合結果 ----------
-function changeThreshold(delta) {
-  state.minThreshold = Math.max(1, state.minThreshold + delta);
-  render();
-}
-
+// ---------- 可約時段 ----------
 function computeMatches() {
   const byDate = {};
   Object.entries(state.availability).forEach(([key, ids]) => {
@@ -230,10 +205,9 @@ function computeMatches() {
   });
   const now = new Date();
   return ranges
-    .filter((r) => r.ids.length >= state.minThreshold)
+    .filter((r) => r.ids.length >= MIN_OVERLAP)
     .filter((r) => slotEndDateTime(r.dateStr, r.endSlot) > now)
     .sort((a, b) => {
-      if (b.ids.length !== a.ids.length) return b.ids.length - a.ids.length;
       const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
       const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
       return ak.localeCompare(bk);
@@ -316,27 +290,21 @@ function render() {
 }
 
 function renderCalendarTab() {
-  const pMap = peopleById();
-
-  // 名字 chips
   document.getElementById('noPeopleHint').style.display = state.people.length === 0 ? 'block' : 'none';
   document.getElementById('pickMeHint').style.display = state.people.length > 0 && !state.selectedPersonId ? 'block' : 'none';
   document.getElementById('peopleChips').innerHTML = state.people.map((p) => {
     const active = state.selectedPersonId === p.id;
-    return `<button class="chip" style="background:${active ? p.color : '#fff'};color:${active ? '#fff' : '#241D33'};box-shadow:0 0 0 2px ${active ? p.color : '#f0e9df'}" onclick="pickMe('${p.id}')">
+    return `<button class="chip" style="background:${active ? p.color : '#fff'};color:${active ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${active ? p.color : 'var(--border)'}" onclick="pickMe('${p.id}')">
       <span class="dot" style="background:${active ? '#fff' : p.color}"></span>${escapeHtml(p.name)}
     </button>`;
   }).join('');
 
-  // 檢視模式按鈕
   document.querySelectorAll('.viewmode-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.mode === state.viewMode);
   });
 
-  // 導覽列標題
   document.getElementById('periodLabel').textContent = getPeriodLabel();
 
-  // 格線 / 月曆
   const gridContainer = document.getElementById('gridContainer');
   if (state.viewMode === 'month') {
     if (state.monthDrillDate) {
@@ -387,7 +355,7 @@ function slotGridHTML(dates) {
   for (let slot = 0; slot < SLOTS_PER_DAY; slot++) {
     const isHour = slot % 2 === 0;
     const timeLabel = isHour ? slotToLabel(slot) : '';
-    let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid #ece4d8' : '1px solid #f7f2ea'}">${timeLabel}</div>`;
+    let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid var(--border)' : '1px solid #f7f2ea'}">${timeLabel}</div>`;
     dates.forEach((d) => {
       const dateStr = toDateStr(d);
       const key = `${dateStr}_${slot}`;
@@ -395,12 +363,12 @@ function slotGridHTML(dates) {
       const isMe = state.selectedPersonId && ids.includes(state.selectedPersonId);
       const session = state.sessions.find((s) => s.dateStr === dateStr && slot >= s.startSlot && slot < s.endSlot);
       let bg = 'transparent';
-      if (session) bg = '#FFC93C33';
+      if (session) bg = 'rgba(199,177,131,0.35)';
       else if (isMe) bg = `${pMap[state.selectedPersonId]?.color}22`;
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const dots = ids.slice(0, 4).map((id) => `<span class="mini-dot" title="${escapeHtml(pMap[id]?.name || '')}" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
-      rowCells += `<button class="slot-cell" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid #ece4d8' : '1px solid #f7f2ea'};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleSlot('${dateStr}', ${slot})">${marker}${dots}${overflow}</button>`;
+      rowCells += `<button class="slot-cell" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid var(--border)' : '1px solid #f7f2ea'};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleSlot('${dateStr}', ${slot})">${marker}${dots}${overflow}</button>`;
     });
     bodyRows += `<div class="grid-row" style="grid-template-columns:48px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
@@ -440,7 +408,7 @@ function monthGridHTML() {
     const hasSession = state.sessions.some((s) => s.dateStr === dateStr);
     const dots = idsArr.slice(0, 4).map((id) => `<span class="mini-dot" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
     const overflow = idsArr.length > 4 ? `<span class="overflow-count">+${idsArr.length - 4}</span>` : '';
-    return `<button class="month-cell" style="opacity:${isCurrentMonth ? 1 : 0.35};box-shadow:${hasSession ? '0 0 0 2px #FFC93C' : 'none'}" onclick="drillIntoDate('${dateStr}')">
+    return `<button class="month-cell" style="opacity:${isCurrentMonth ? 1 : 0.35};box-shadow:${hasSession ? '0 0 0 2px var(--sand)' : 'none'}" onclick="drillIntoDate('${dateStr}')">
       <span class="month-date">${d.getDate()}</span>
       <div class="month-dots">${dots}${overflow}</div>
     </button>`;
@@ -455,8 +423,6 @@ function monthGridHTML() {
 }
 
 function renderMatchTab() {
-  document.getElementById('thresholdValue').textContent = state.minThreshold;
-
   const matches = computeMatches();
   const hasAnyAvailability = Object.keys(state.availability).length > 0;
   const pMap = peopleById();
@@ -466,10 +432,10 @@ function renderMatchTab() {
     listEl.innerHTML = `<p class="hint">${
       !hasAnyAvailability
         ? '還沒有人登記任何時段，先到「日曆登記」頁面填寫吧！'
-        : `目前沒有符合「至少 ${state.minThreshold} 人」的未來時段，試著調低門檻看看。`
+        : '目前沒有重疊 2 人以上的未來時段。'
     }</p>`;
   } else {
-    listEl.innerHTML = matches.map((row, idx) => {
+    listEl.innerHTML = matches.map((row) => {
       const d = parseDateStr(row.dateStr);
       const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
       const key = `${row.dateStr}_${row.startSlot}_${row.endSlot}`;
@@ -483,7 +449,7 @@ function renderMatchTab() {
         const endOptions = Array.from({ length: SLOTS_PER_DAY }, (_, s) => s + 1).map((s) => `<option value="${s}" ${d0.endSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
         const participantChips = state.people.map((p) => {
           const checked = d0.participantIds.has(p.id);
-          return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : '#241D33'};box-shadow:0 0 0 2px ${checked ? p.color : '#f0e9df'}" onclick="toggleDraftParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
+          return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleDraftParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
         }).join('');
 
         draftHTML = `
@@ -512,17 +478,13 @@ function renderMatchTab() {
       }
 
       return `
-        <div class="match-card" style="${idx === 0 ? 'box-shadow:0 0 0 2px #FFC93C' : ''}">
-          <div class="match-card-top">
-            <div class="count-badge" style="background:${idx === 0 ? '#FF4D8D' : '#2FD1A3'}">
-              <span class="count-num">${row.ids.length}</span><span class="count-unit">人</span>
-            </div>
-            <div class="match-info">
-              <div class="match-time">${row.dateStr.slice(5)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)} ${idx === 0 ? '🔥' : ''}</div>
-              <div class="chips-row">${chips}</div>
-            </div>
-            <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排</button>
+        <div class="match-card">
+          <div class="match-card-header">
+            <span class="match-title">${row.dateStr.slice(5)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
+            <span class="match-count">${row.ids.length}人</span>
           </div>
+          <div class="chips-row">${chips}</div>
+          <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
           ${draftHTML}
         </div>
       `;

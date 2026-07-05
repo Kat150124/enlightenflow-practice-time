@@ -3,18 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>練習時間配對</title>
+<title>啟萌培訓團練時間</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <div>
-        <h1>練習時間配對 <span class="sparkle">✨</span></h1>
-        <p class="subtitle">大家的零碎時間，一起湊出練習時段</p>
-      </div>
+      <h1>🌱 啟萌培訓團練時間</h1>
       <button id="refreshBtn" class="refresh-btn" title="重新整理資料">🔄</button>
     </header>
 
@@ -22,16 +19,12 @@
 
     <div class="tabs">
       <button id="tabCalendarBtn" class="tab-btn active" onclick="switchTab('calendar')">📅 日曆登記</button>
-      <button id="tabMatchBtn" class="tab-btn" onclick="switchTab('match')">✨ 媒合結果</button>
+      <button id="tabMatchBtn" class="tab-btn" onclick="switchTab('match')">🌿 可約時段</button>
     </div>
 
     <!-- 日曆登記頁 -->
     <div id="calendarTab" class="tab-content">
-      <div class="add-person-row">
-        <input id="newNameInput" placeholder="輸入你的名字" />
-        <button class="btn-yellow" onclick="handleAddPerson()">＋ 加入</button>
-      </div>
-      <p id="noPeopleHint" class="hint" style="display:none">還沒有人加入，先在上面輸入名字加入吧！</p>
+      <p id="noPeopleHint" class="hint" style="display:none">尚未設定成員名單，請先到 Google Sheet 的 People 工作表新增。</p>
 
       <p class="mini-label">點名字選擇「我是誰」，再去日曆上點時段：</p>
       <div id="peopleChips" class="chips-row"></div>
@@ -53,17 +46,8 @@
       <p class="tip">💡 點格子切換自己有空／沒空。金色 🎯 底色代表已確認的練習時間。</p>
     </div>
 
-    <!-- 媒合結果頁 -->
+    <!-- 可約時段頁 -->
     <div id="matchTab" class="tab-content" style="display:none">
-      <div class="threshold-row">
-        <span class="threshold-label">👥 至少要幾人有空</span>
-        <div class="stepper">
-          <button onclick="changeThreshold(-1)">−</button>
-          <span id="thresholdValue">2</span>
-          <button onclick="changeThreshold(1)">＋</button>
-        </div>
-      </div>
-
       <div id="matchList"></div>
 
       <div class="confirmed-section">
