@@ -5,7 +5,7 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUu
 const SLOTS_PER_DAY = 48; // 半小時為一格，涵蓋全天
 const DAY_START_HOUR = 6; // 每天格線從這個時間開始顯示（例如 6 代表從早上 6:00 開始，一路到隔天凌晨 5:30）
 const DAY_START_SLOT = DAY_START_HOUR * 2;
-const ROW_HEIGHT = 24;
+const ROW_HEIGHT = 30;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
@@ -351,7 +351,7 @@ function getPeriodLabel() {
 
 function slotGridHTML(dates) {
   const pMap = peopleById();
-  const colW = dates.length <= 1 ? 220 : 44;
+  const colW = dates.length <= 1 ? 260 : 54;
   const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
@@ -366,7 +366,7 @@ function slotGridHTML(dates) {
     const isHour = i % 2 === 0;
     const displayHour = Math.floor(absoluteSlot / 2);
     const displayMin = (absoluteSlot % 2) * 30;
-    const timeLabel = isHour ? `${String(displayHour).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
+    const timeLabel = isHour ? `${String(displayHour % 24).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
     const borderStyle = isHour ? '1.5px solid rgba(70,66,60,0.3)' : '1px solid rgba(70,66,60,0.12)';
     let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${borderStyle}">${timeLabel}</div>`;
     dates.forEach((d) => {
