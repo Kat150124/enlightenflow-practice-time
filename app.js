@@ -489,7 +489,7 @@ function slotGridHTML(dates) {
   const wrapperStyle = fitToScreen ? 'width:100%' : `min-width:${48 + dates.length * colW}px`;
 
   return `
-    <div class="grid-card">
+    <div class="grid-card ${fitToScreen ? 'week-fit' : ''}">
       <div class="quick-jump-row">${quickJumps}</div>
       <div id="slotScroll" class="grid-scroll">
         <div style="${wrapperStyle}">
