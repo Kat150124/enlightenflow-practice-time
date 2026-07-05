@@ -2,15 +2,16 @@
 const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUuwyiai5Cn8yXSVFsERfRiUOtbrC8tvn-ek6QNZSSuAluKJXg/exec';
 // =================================================================
 
-const SLOTS_PER_DAY = 48; // 半小時為一格，涵蓋全天
-const DAY_START_HOUR = 6; // 每天格線從這個時間開始顯示（例如 6 代表從早上 6:00 開始，一路到隔天凌晨 5:30）
-const DAY_START_SLOT = DAY_START_HOUR * 2;
+const SLOTS_PER_DAY = 48; // 一天總共 48 個半小時格（內部仍以此為基準）
+const VISIBLE_START_HOUR = 6; // 畫面只顯示從這個時間開始（6 = 早上 6:00），00:00-06:00 不練習所以隱藏
+const VISIBLE_START_SLOT = VISIBLE_START_HOUR * 2;
+const VISIBLE_SLOT_COUNT = SLOTS_PER_DAY - VISIBLE_START_SLOT; // 顯示到 24:00 為止
 const ROW_HEIGHT = 30;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
-  { label: '凌晨', hour: 0 },
-  { label: '上午', hour: 8 },
+  { label: '清晨', hour: 6 },
+  { label: '上午', hour: 9 },
   { label: '下午', hour: 13 },
   { label: '晚上', hour: 18 },
   { label: '深夜', hour: 22 },
@@ -62,7 +63,7 @@ function slotToLabel(slot) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 function slotToDisplayIndex(slot) {
-  return (slot - DAY_START_SLOT + SLOTS_PER_DAY) % SLOTS_PER_DAY;
+  return slot - VISIBLE_START_SLOT;
 }
 function slotEndDateTime(dateStr, endSlotExclusive) {
   const d = parseDateStr(dateStr);
@@ -448,7 +449,7 @@ function slotGridHTML(dates) {
   const headerCells = dates.map((d) => {
     const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
     const dateStr = toDateStr(d);
-    const isFullDay = state.selectedPersonId && Array.from({ length: SLOTS_PER_DAY }, (_, s) => s)
+    const isFullDay = state.selectedPersonId && Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s)
       .every((s) => (state.availability[`${dateStr}_${s}`] || []).includes(state.selectedPersonId));
     return `<div class="grid-head">
       <div class="grid-head-wd">週${wd}</div>
@@ -458,13 +459,12 @@ function slotGridHTML(dates) {
   }).join('');
 
   let bodyRows = '';
-  for (let i = 0; i < SLOTS_PER_DAY; i++) {
-    const absoluteSlot = DAY_START_SLOT + i;
-    const slot = absoluteSlot % SLOTS_PER_DAY; // 實際對應到的資料時段
-    const isHour = i % 2 === 0;
-    const displayHour = Math.floor(absoluteSlot / 2);
-    const displayMin = (absoluteSlot % 2) * 30;
-    const timeLabel = isHour ? `${String(displayHour % 24).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
+  for (let i = 0; i < VISIBLE_SLOT_COUNT; i++) {
+    const slot = VISIBLE_START_SLOT + i;
+    const isHour = slot % 2 === 0;
+    const displayHour = Math.floor(slot / 2);
+    const displayMin = (slot % 2) * 30;
+    const timeLabel = isHour ? `${String(displayHour).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
     const borderStyle = isHour ? '1.5px solid rgba(70,66,60,0.3)' : '1px solid rgba(70,66,60,0.12)';
     let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${borderStyle}">${timeLabel}</div>`;
     dates.forEach((d) => {
@@ -556,8 +556,8 @@ function renderMatchTab() {
       let draftHTML = '';
       if (isOpen && state.draft) {
         const d0 = state.draft;
-        const startOptions = Array.from({ length: SLOTS_PER_DAY }, (_, s) => `<option value="${s}" ${d0.startSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
-        const endOptions = Array.from({ length: SLOTS_PER_DAY }, (_, s) => s + 1).map((s) => `<option value="${s}" ${d0.endSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
+        const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s).map((s) => `<option value="${s}" ${d0.startSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
+        const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s + 1).map((s) => `<option value="${s}" ${d0.endSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
         const participantChips = state.people.map((p) => {
           const checked = d0.participantIds.has(p.id);
           return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleDraftParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
