@@ -37,6 +37,10 @@ function toDateStr(d) {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+function toShortDate(dateStrOrDate) {
+  const d = dateStrOrDate instanceof Date ? dateStrOrDate : parseDateStr(dateStrOrDate);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
 function parseDateStr(s) {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -438,7 +442,7 @@ function getPeriodLabel() {
   }
   const dates = getPeriodDates();
   if (dates.length === 0) return '';
-  return `${toDateStr(dates[0]).slice(5)} – ${toDateStr(dates[dates.length - 1]).slice(5)}`;
+  return `${toShortDate(dates[0])} – ${toShortDate(dates[dates.length - 1])}`;
 }
 
 function slotGridHTML(dates) {
@@ -455,7 +459,7 @@ function slotGridHTML(dates) {
       .every((s) => (state.availability[`${dateStr}_${s}`] || []).includes(state.selectedPersonId));
     return `<div class="grid-head">
       <div class="grid-head-wd">週${wd}</div>
-      <div class="grid-head-date">${dateStr.slice(5)}</div>
+      <div class="grid-head-date">${toShortDate(d)}</div>
       <button class="fullday-btn ${isFullDay ? 'active' : ''}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleFullDay('${dateStr}')">整天${isFullDay ? ' ✓' : ''}</button>
     </div>`;
   }).join('');
@@ -595,7 +599,7 @@ function renderMatchTab() {
       return `
         <div class="match-card">
           <div class="match-card-header">
-            <span class="match-title">${row.dateStr.slice(5)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
+            <span class="match-title">${toShortDate(row.dateStr)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
             <span class="match-count">${row.ids.length}人</span>
           </div>
           <div class="chips-row">${chips}</div>
@@ -623,7 +627,7 @@ function renderMatchTab() {
       return `
         <div class="session-card" style="opacity:${isPast ? 0.5 : 1}">
           <div class="session-info">
-            <div class="session-time">${s.dateStr.slice(5)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}${isPast ? '<span class="past-label"> ・已過</span>' : ''}</div>
+            <div class="session-time">${toShortDate(s.dateStr)}（週${wd}）${slotToLabel(s.startSlot)}–${slotToLabel(s.endSlot)}${isPast ? '<span class="past-label"> ・已過</span>' : ''}</div>
             <div class="chips-row">${chips}</div>
             ${s.note ? `<p class="session-note">${escapeHtml(s.note)}</p>` : ''}
           </div>
