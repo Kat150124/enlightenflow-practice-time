@@ -367,7 +367,8 @@ function slotGridHTML(dates) {
     const displayHour = Math.floor(absoluteSlot / 2);
     const displayMin = (absoluteSlot % 2) * 30;
     const timeLabel = isHour ? `${String(displayHour).padStart(2, '0')}:${String(displayMin).padStart(2, '0')}` : '';
-    let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid var(--border)' : '1px solid #f7f2ea'}">${timeLabel}</div>`;
+    const borderStyle = isHour ? '1.5px solid rgba(70,66,60,0.3)' : '1px solid rgba(70,66,60,0.12)';
+    let rowCells = `<div class="time-label" style="height:${ROW_HEIGHT}px;border-top:${borderStyle}">${timeLabel}</div>`;
     dates.forEach((d) => {
       const dateStr = toDateStr(d);
       const key = `${dateStr}_${slot}`;
@@ -380,7 +381,7 @@ function slotGridHTML(dates) {
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const dots = ids.slice(0, 4).map((id) => `<span class="mini-dot" title="${escapeHtml(pMap[id]?.name || '')}" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
-      rowCells += `<button class="slot-cell" style="height:${ROW_HEIGHT}px;border-top:${isHour ? '1px solid var(--border)' : '1px solid #f7f2ea'};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleSlot('${dateStr}', ${slot})">${marker}${dots}${overflow}</button>`;
+      rowCells += `<button class="slot-cell" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'} onclick="toggleSlot('${dateStr}', ${slot})">${marker}${dots}${overflow}</button>`;
     });
     bodyRows += `<div class="grid-row" style="grid-template-columns:48px repeat(${dates.length}, 1fr)">${rowCells}</div>`;
   }
