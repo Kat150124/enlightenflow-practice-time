@@ -167,6 +167,20 @@ async function pickMe(id) {
 // ---------- 切換時段（含拉選，先暫存、按儲存才送出） ----------
 let dragState = null; // { dateStr, startSlot, currentSlot, mode }
 
+function personGlyph(name) {
+  if (!name) return null;
+  const match = name.match(/^(\p{Extended_Pictographic}\uFE0F?)/u);
+  return match ? match[1] : null;
+}
+function personDotHTML(id, pMap, withTitle) {
+  const p = pMap[id];
+  const title = withTitle ? ` title="${escapeHtml(p?.name || '')}"` : '';
+  const glyph = personGlyph(p?.name);
+  if (glyph) {
+    return `<span class="mini-emoji"${title}>${glyph}</span>`;
+  }
+  return `<span class="mini-dot"${title} style="background:${p?.color || '#ccc'}"></span>`;
+}
 function personInSlot(dateStr, slot) {
   const key = `${dateStr}_${slot}`;
   const base = (state.availability[key] || []).includes(state.selectedPersonId);
@@ -590,7 +604,7 @@ function slotGridHTML(dates) {
       if (session) bg = 'rgba(199,177,131,0.35)';
       else if (isMe) bg = `${pMap[state.selectedPersonId]?.color}22`;
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
-      const dots = ids.slice(0, 4).map((id) => `<span class="mini-dot" title="${escapeHtml(pMap[id]?.name || '')}" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
+      const dots = ids.slice(0, 4).map((id) => personDotHTML(id, pMap, true)).join('');
       const overflow = ids.length > 4 ? `<span class="overflow-count">+${ids.length - 4}</span>` : '';
       const pendingClass = pendingMode ? 'pending-change' : '';
       rowCells += `<button class="slot-cell ${pendingClass}" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}" ${state.selectedPersonId ? '' : 'disabled'}>${marker}${dots}${overflow}</button>`;
@@ -636,7 +650,7 @@ function monthGridHTML() {
     });
     const idsArr = [...ids];
     const hasSession = state.sessions.some((s) => s.dateStr === dateStr);
-    const dots = idsArr.slice(0, 4).map((id) => `<span class="mini-dot" style="background:${pMap[id]?.color || '#ccc'}"></span>`).join('');
+    const dots = idsArr.slice(0, 4).map((id) => personDotHTML(id, pMap, false)).join('');
     const overflow = idsArr.length > 4 ? `<span class="overflow-count">+${idsArr.length - 4}</span>` : '';
     return `<button class="month-cell" style="opacity:${isCurrentMonth ? 1 : 0.35};box-shadow:${hasSession ? '0 0 0 2px var(--sand)' : 'none'}" onclick="drillIntoDate('${dateStr}')">
       <span class="month-date">${d.getDate()}</span>
