@@ -3,13 +3,15 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbwzaCtg5KK1Th923xFZGUu
 // =================================================================
 
 const SLOTS_PER_DAY = 48; // 一天總共 48 個半小時格（內部仍以此為基準）
-const VISIBLE_START_HOUR = 8; // 畫面只顯示從這個時間開始（8 = 早上 8:00），之前的時段不練習所以隱藏
+const VISIBLE_START_HOUR = 0; // 畫面顯示從這個時間開始（0 = 00:00），顯示全天
 const VISIBLE_START_SLOT = VISIBLE_START_HOUR * 2;
 const VISIBLE_SLOT_COUNT = SLOTS_PER_DAY - VISIBLE_START_SLOT; // 顯示到 24:00 為止
+const OVERNIGHT_END_SLOT = 12; // 00:00-06:00 為「夜練／過夜」時段，超過這個 slot 就是一般時段
 const ROW_HEIGHT = 30;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 const QUICK_JUMPS = [
+  { label: '夜練', hour: 0 },
   { label: '早上', hour: 8 },
   { label: '下午', hour: 13 },
   { label: '晚上', hour: 18 },
@@ -653,6 +655,12 @@ function slotGridHTML(dates) {
   let bodyRows = '';
   for (let i = 0; i < VISIBLE_SLOT_COUNT; i++) {
     const slot = VISIBLE_START_SLOT + i;
+    if (slot === 0) {
+      bodyRows += `<div class="section-divider">🌙 夜練／過夜（00:00–06:00，代表當天夜練、過夜）</div>`;
+    }
+    if (slot === OVERNIGHT_END_SLOT) {
+      bodyRows += `<div class="section-divider">☀️ 一般時段</div>`;
+    }
     const isHour = slot % 2 === 0;
     const displayHour = Math.floor(slot / 2);
     const displayMin = (slot % 2) * 30;
@@ -675,6 +683,7 @@ function slotGridHTML(dates) {
       let bg = 'transparent';
       if (session) bg = 'rgba(199,177,131,0.35)';
       else if (isMe) bg = `${pMap[state.selectedPersonId]?.color}22`;
+      else if (slot < OVERNIGHT_END_SLOT) bg = 'rgba(91,120,150,0.07)';
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const cellContent = ids.length === 0
         ? ''
