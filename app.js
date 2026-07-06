@@ -132,7 +132,6 @@ function setSaving(isSaving) {
 // ---------- 初始化 ----------
 async function init() {
   document.getElementById('errorBanner').addEventListener('click', hideError);
-  document.getElementById('refreshBtn').addEventListener('click', refreshAll);
   setupDragHandlers();
   render(); // 先依記住的頁籤切換畫面，不用等資料抓完，避免閃過日曆頁
   await refreshAll();
