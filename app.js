@@ -30,7 +30,6 @@ const state = {
   editSessionId: null,
   editDraft: null,
   pendingChanges: {}, // 拉選/點選後尚未儲存的變更，key: `${dateStr}_${slot}`, value: 'add' | 'remove'
-  viewingSlot: null, // 純瀏覽模式下，目前點開查看詳情的時段 { dateStr, slot }
 };
 
 // ---------- 日期工具 ----------
@@ -283,38 +282,74 @@ function setupDragHandlers() {
 
   // 沒有選人（純瀏覽）時，點格子改成顯示詳情，而不是登記時段
   document.addEventListener('click', (e) => {
+    const popover = document.getElementById('slotDetailBar');
+    if (popover.style.display !== 'none' && !popover.contains(e.target) && !e.target.closest('.slot-cell')) {
+      closeSlotDetail();
+      return;
+    }
     if (state.selectedPersonId) return;
     const cell = e.target.closest('.slot-cell');
     if (!cell) return;
-    showSlotDetail(cell.dataset.date, Number(cell.dataset.slot));
+    showSlotDetail(cell.dataset.date, Number(cell.dataset.slot), cell);
   });
 }
 
-function showSlotDetail(dateStr, slot) {
-  state.viewingSlot = { dateStr, slot };
-  renderSlotDetail();
-}
 function closeSlotDetail() {
-  state.viewingSlot = null;
-  renderSlotDetail();
+  document.getElementById('slotDetailBar').style.display = 'none';
 }
-function renderSlotDetail() {
-  const bar = document.getElementById('slotDetailBar');
-  if (!state.viewingSlot) {
-    bar.style.display = 'none';
-    return;
-  }
-  const { dateStr, slot } = state.viewingSlot;
+
+function showSlotDetail(dateStr, slot, cellEl) {
   const pMap = peopleById();
   const ids = state.availability[`${dateStr}_${slot}`] || [];
+  const session = state.sessions.find((s) => s.dateStr === dateStr && slot >= s.startSlot && slot < s.endSlot);
   const d = parseDateStr(dateStr);
   const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
   const timeLabel = `${toShortDate(dateStr)}（週${wd}）${slotToLabel(slot)}–${slotToLabel(slot + 1)}`;
-  const names = ids.length === 0
-    ? '目前沒有人登記'
-    : ids.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
-  document.getElementById('slotDetailText').innerHTML = `<strong>${timeLabel}</strong><span class="slot-detail-names">${names}</span>`;
-  bar.style.display = 'flex';
+
+  let html = `<div class="popover-time">${timeLabel}</div>`;
+
+  if (session) {
+    const sessionChips = session.participantIds.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
+    html += `
+      <div class="popover-section popover-session">
+        <div class="popover-label">🎯 已確認練習 ${slotToLabel(session.startSlot)}–${slotToLabel(session.endSlot)}</div>
+        <div class="chips-row">${sessionChips}</div>
+        ${session.note ? `<p class="session-note">${escapeHtml(session.note)}</p>` : ''}
+      </div>
+    `;
+  }
+
+  html += `
+    <div class="popover-section">
+      <div class="popover-label">登記有空</div>
+      ${ids.length === 0
+        ? `<p class="hint small popover-empty">目前沒有人登記</p>`
+        : `<div class="chips-row">${ids.map((id) => `<span class="tag small" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('')}</div>`}
+    </div>
+  `;
+
+  document.getElementById('slotDetailText').innerHTML = html;
+  positionPopoverNear(cellEl);
+}
+
+function positionPopoverNear(cellEl) {
+  const popover = document.getElementById('slotDetailBar');
+  popover.style.display = 'block';
+  const margin = 8;
+  const rect = cellEl.getBoundingClientRect();
+  const pw = popover.offsetWidth;
+  const ph = popover.offsetHeight;
+
+  let left = rect.left;
+  if (left + pw > window.innerWidth - margin) left = window.innerWidth - pw - margin;
+  if (left < margin) left = margin;
+
+  let top = rect.bottom + 6;
+  if (top + ph > window.innerHeight - margin) top = rect.top - ph - 6;
+  if (top < margin) top = margin;
+
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
 }
 
 // ---------- Tab / 檢視模式 ----------

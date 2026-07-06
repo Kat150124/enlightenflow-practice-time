@@ -6,7 +6,7 @@
 <title>🌱 啟萌培訓團練時間</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11" />
+<link rel="stylesheet" href="style.css?v=12" />
 </head>
 <body>
   <div class="app">
@@ -47,9 +47,9 @@
       <p class="tip">💡 在格子上點一下或按住拖曳可以選取時間，選完後按下面的「儲存」才會真的存進去。金色 🎯 底色代表已確認的練習時間。</p>
     </div>
 
-    <div id="slotDetailBar" class="slot-detail-bar" style="display:none">
-      <span id="slotDetailText"></span>
+    <div id="slotDetailBar" class="slot-detail-popover" style="display:none">
       <button class="slot-detail-close" onclick="closeSlotDetail()">✕</button>
+      <div id="slotDetailText"></div>
     </div>
 
     <div id="pendingBar" class="pending-bar" style="display:none">
@@ -72,6 +72,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
