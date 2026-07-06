@@ -379,9 +379,9 @@ body {
 .tag { display: inline-block; font-size: 14px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: #fff; margin: 3px 5px 3px 0; }
 .tag.small { font-size: 13px; padding: 3px 8px; }
 .btn-schedule {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
-  padding: 14px 24px;
+  padding: 10px 18px;
   border-radius: 999px;
   border: none;
   background: var(--bg);
