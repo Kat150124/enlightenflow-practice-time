@@ -656,7 +656,7 @@ function slotGridHTML(dates) {
   for (let i = 0; i < VISIBLE_SLOT_COUNT; i++) {
     const slot = VISIBLE_START_SLOT + i;
     if (slot === 0) {
-      bodyRows += `<div class="section-divider">🌙 夜練／過夜（00:00–06:00，代表當天夜練、過夜）</div>`;
+      bodyRows += `<div class="section-divider">🌙 夜練／過夜</div>`;
     }
     if (slot === OVERNIGHT_END_SLOT) {
       bodyRows += `<div class="section-divider">☀️ 一般時段</div>`;
