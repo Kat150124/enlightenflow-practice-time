@@ -803,10 +803,8 @@ function renderMatchTab() {
         <div class="match-card">
           <div class="match-card-header">
             <span class="match-title">${toShortDate(row.dateStr)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
-            <div class="match-header-right">
-              <span class="match-count">${row.ids.length}人</span>
-              <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
-            </div>
+            <span class="match-count">${row.ids.length}人</span>
+            <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
           </div>
           <div class="chips-row">${chips}</div>
           ${draftHTML}

@@ -365,8 +365,7 @@ body {
 .match-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 10px;
   flex-wrap: nowrap;
 }
@@ -374,13 +373,12 @@ body {
   font-family: 'Noto Serif TC', serif;
   font-size: 19px;
   font-weight: 700;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.match-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .match-count {
   flex-shrink: 0;
   font-size: 20px;
@@ -403,13 +401,13 @@ body {
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  margin-left: auto; /* 桌機版：標題+人數靠左，按鈕推到最右邊 */
 }
 .btn-schedule.active { background: var(--ink); color: #fff; }
 @media (max-width: 640px) {
   .match-title { font-size: 14px; }
-  .match-count { font-size: 13px; padding: 4px 10px; }
-  .btn-schedule { font-size: 12px; padding: 6px 10px; }
-  .match-header-right { gap: 5px; }
+  .match-count { font-size: 13px; padding: 4px 10px; margin-left: auto; } /* 手機版：人數+按鈕一起推到右邊 */
+  .btn-schedule { font-size: 12px; padding: 6px 10px; margin-left: 0; }
 }
 
 .draft-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
