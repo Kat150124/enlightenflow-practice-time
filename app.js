@@ -638,6 +638,8 @@ function slotGridHTML(dates) {
   const colW = dates.length <= 1 ? 260 : 54;
   const fitToScreen = dates.length === 7; // 一週檢視直接縮寬塞進畫面，不用橫向滑動
   const timeColWidth = fitToScreen ? 46 : 48;
+  const isNarrowScreen = window.matchMedia('(max-width: 640px)').matches;
+  const maxIcons = isNarrowScreen ? 2 : 5; // 電腦版空間夠，多顯示幾個 emoji 再用 +N
   const quickJumps = QUICK_JUMPS.map((q) => `<button class="quick-jump" data-hour="${q.hour}" onclick="scrollToHour(${q.hour})">${q.label}</button>`).join('');
 
   const headerCells = dates.map((d) => {
@@ -687,9 +689,9 @@ function slotGridHTML(dates) {
       const marker = session && slot === session.startSlot ? '<span class="session-marker">🎯</span>' : '';
       const cellContent = ids.length === 0
         ? ''
-        : ids.length <= 2
+        : ids.length <= maxIcons
           ? ids.map((id) => personDotHTML(id, pMap, true)).join('')
-          : `${ids.slice(0, 2).map((id) => personDotHTML(id, pMap, true)).join('')}<span class="overflow-count">+${ids.length - 2}</span>`;
+          : `${ids.slice(0, maxIcons).map((id) => personDotHTML(id, pMap, true)).join('')}<span class="overflow-count">+${ids.length - maxIcons}</span>`;
       const pendingClass = pendingMode ? 'pending-change' : '';
       rowCells += `<button class="slot-cell ${pendingClass}" data-date="${dateStr}" data-slot="${slot}" style="height:${ROW_HEIGHT}px;border-top:${borderStyle};background:${bg}">${marker}${cellContent}</button>`;
     });
