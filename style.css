@@ -356,15 +356,24 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
-.match-title { font-family: 'Noto Serif TC', serif; font-size: 18px; font-weight: 700; }
+.match-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 19px;
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .match-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .match-count {
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
-  padding: 5px 16px;
+  padding: 6px 18px;
   border-radius: 999px;
   background: var(--bg);
   color: var(--rose);
@@ -372,17 +381,24 @@ body {
 .tag { display: inline-block; font-size: 14px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: #fff; margin: 3px 5px 3px 0; }
 .tag.small { font-size: 13px; padding: 3px 8px; }
 .btn-schedule {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  padding: 8px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   border: none;
   background: var(--bg);
   color: var(--ink);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-schedule.active { background: var(--ink); color: #fff; }
+@media (max-width: 640px) {
+  .match-title { font-size: 14px; }
+  .match-count { font-size: 13px; padding: 4px 10px; }
+  .btn-schedule { font-size: 12px; padding: 6px 10px; }
+  .match-header-right { gap: 5px; }
+}
 
 .draft-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
 .draft-row { display: flex; align-items: center; gap: 10px; }
