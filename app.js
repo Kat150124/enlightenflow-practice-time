@@ -38,6 +38,7 @@ const state = {
   activeFilterPanel: null, // 目前展開哪個下拉篩選面板 null | 'date' | 'time' | 'people' | 'members'
   matchFilter: { dateFrom: '', dateTo: '', hourFrom: '', hourTo: '', minPeople: 2, memberIds: new Set() },
   expandedHistoryMonths: new Set(), // 已確認練習歷史紀錄：展開的月份（預設只展開最新月）
+  historyDefaultApplied: false, // 是否已經套用過「預設展開最新月」，避免每次重繪都覆蓋使用者的收合操作
 };
 
 // ---------- 日期工具 ----------
@@ -1027,9 +1028,10 @@ function renderConfirmedTab() {
       }
       g.sessions.push(s);
     });
-    // 預設只展開最新一個月（使用者還沒手動收合/展開過的話）
-    if (state.expandedHistoryMonths.size === 0 && monthGroups.length > 0) {
+    // 預設只展開最新一個月，且只套用「一次」，之後使用者收合/展開都不會再被覆蓋
+    if (!state.historyDefaultApplied && monthGroups.length > 0) {
       state.expandedHistoryMonths.add(monthGroups[0].key);
+      state.historyDefaultApplied = true;
     }
     historyHTML = monthGroups.map((g) => {
       const [y, m] = g.key.split('-');
