@@ -849,13 +849,14 @@ function renderMatchTab() {
         </div>
       `;
     } else if (type === 'people') {
+      const maxPeople = Math.max(1, state.people.length);
       panelBody = `
         <div class="draft-row">
           <label>至少幾人</label>
           <div class="stepper">
-            <button onclick="updateMatchFilter('minPeople', ${Math.max(2, f.minPeople - 1)})">−</button>
+            <button onclick="updateMatchFilter('minPeople', ${Math.max(1, f.minPeople - 1)})">−</button>
             <span>${f.minPeople}</span>
-            <button onclick="updateMatchFilter('minPeople', ${f.minPeople + 1})">＋</button>
+            <button onclick="updateMatchFilter('minPeople', ${Math.min(maxPeople, f.minPeople + 1)})">＋</button>
           </div>
         </div>
       `;
@@ -869,7 +870,7 @@ function renderMatchTab() {
     return `
       <div class="filter-dropdown">
         <button class="filter-pill ${active ? 'active' : ''} ${isOpen ? 'open' : ''}" onclick="openFilterPanel('${type}')">${label} <span class="filter-pill-caret">${isOpen ? '▾' : '▸'}</span></button>
-        ${isOpen ? `<div class="filter-dropdown-panel">${panelBody}</div>` : ''}
+        ${isOpen ? `<div class="filter-dropdown-panel filter-dropdown-panel-${type}">${panelBody}</div>` : ''}
       </div>
     `;
   };
