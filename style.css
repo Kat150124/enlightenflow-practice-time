@@ -19,7 +19,20 @@ body {
   font-family: 'Nunito', sans-serif;
   font-size: 17px;
 }
-.app { max-width: 880px; margin: 0 auto; padding-bottom: 90px; }
+.app { max-width: 1200px; margin: 0 auto; padding-bottom: 90px; }
+@media (min-width: 900px) {
+  body { font-size: 18px; }
+  .app-header h1 { font-size: 30px; }
+  .tab-btn { font-size: 18px; padding: 15px 0; }
+  .chip { font-size: 17px; padding: 11px 20px; }
+  .match-title { font-size: 21px; }
+  .match-day-title { font-size: 17px; }
+  .section-title { font-size: 20px; }
+  .grid-head-wd { font-size: 16px; }
+  .grid-head-date { font-size: 14px; }
+  .mini-dot { width: 9px; height: 9px; }
+  .mini-emoji { font-size: 13px; }
+}
 
 .app-header {
   display: flex;
@@ -238,6 +251,9 @@ body {
 }
 .quick-jump.active { background: rgba(176,141,130,0.18); color: var(--rose); }
 .grid-scroll { max-height: 560px; overflow: auto; position: relative; }
+@media (min-width: 900px) {
+  .grid-scroll { max-height: 680px; }
+}
 .grid-header-row {
   display: grid;
   position: sticky;
@@ -453,7 +469,10 @@ body {
 .history-subtitle { margin-top: 24px; }
 
 /* 可約時段：篩選開關 + 一排下拉選項 */
-.match-filter-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+.match-filter-row { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.filter-dropdown-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; max-width: 380px; }
+.filter-dropdown-group .filter-pill { width: 100%; }
+.filter-dropdown-group .filter-clear { grid-column: 1 / -1; width: auto; justify-self: start; }
 .filter-toggle-main {
   border: none;
   background: var(--card);
@@ -467,7 +486,6 @@ body {
   flex-shrink: 0;
 }
 .filter-toggle-main.active { background: var(--ink); color: #fff; }
-.filter-dropdown-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-dropdown { position: relative; }
 .filter-pill {
   border: none;
@@ -487,15 +505,14 @@ body {
 .filter-pill.open { box-shadow: 0 0 0 2px var(--ink); }
 .filter-pill.filter-clear { background: none; box-shadow: none; color: var(--muted); text-decoration: underline; }
 .filter-dropdown-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  position: fixed;
   background: #fff;
   border-radius: 16px;
   padding: 14px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-  z-index: 50;
+  z-index: 60;
   min-width: 220px;
+  max-width: calc(100vw - 24px);
   display: flex;
   flex-direction: column;
   gap: 10px;
