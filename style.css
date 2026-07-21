@@ -469,10 +469,14 @@ body {
 .history-subtitle { margin-top: 24px; }
 
 /* 可約時段：篩選開關 + 一排下拉選項 */
-.match-filter-row { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
-.filter-dropdown-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; max-width: 380px; }
-.filter-dropdown-group .filter-pill { width: 100%; }
-.filter-dropdown-group .filter-clear { grid-column: 1 / -1; width: auto; justify-self: start; }
+.match-filter-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.filter-dropdown-group { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) {
+  .match-filter-row { flex-direction: column; }
+  .filter-dropdown-group { display: grid; grid-template-columns: repeat(2, 1fr); width: 100%; max-width: 380px; }
+  .filter-dropdown-group .filter-pill { width: 100%; }
+  .filter-dropdown-group .filter-clear { grid-column: 1 / -1; width: auto; justify-self: start; }
+}
 .filter-toggle-main {
   border: none;
   background: var(--card);
