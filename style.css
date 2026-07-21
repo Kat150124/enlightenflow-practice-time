@@ -525,14 +525,17 @@ body {
 .filter-dropdown-panel .draft-row label { font-size: 13px; }
 .filter-dropdown-panel input[type="date"],
 .filter-dropdown-panel select {
-  width: 100%;
-  font-size: 14px;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fff;
   border: 2px solid var(--border);
   border-radius: 12px;
   padding: 8px 10px;
   outline: none;
   font-family: inherit;
 }
+.filter-dropdown-panel-members { min-width: 280px; }
+.filter-dropdown-panel-members .chips-row { max-width: 320px; }
 .stepper { display: flex; align-items: center; gap: 12px; }
 .stepper button {
   width: 28px;
