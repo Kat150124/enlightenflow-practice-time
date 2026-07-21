@@ -34,7 +34,8 @@ const state = {
   editDraft: null,
   pendingChanges: {}, // 拉選/點選後尚未儲存的變更，key: `${dateStr}_${slot}`, value: 'add' | 'remove'
   expandedMatchDays: new Set(), // 可約時段：展開的日期（預設空 = 全部收合）
-  activeFilterPanel: null, // 可約時段篩選：目前打開哪個篩選抽屜 null | 'date' | 'time' | 'people' | 'members'
+  matchFilterOpen: false, // 篩選開關：是否顯示日期/時段/人數/成員這排下拉選項
+  activeFilterPanel: null, // 目前展開哪個下拉篩選面板 null | 'date' | 'time' | 'people' | 'members'
   matchFilter: { dateFrom: '', dateTo: '', hourFrom: '', hourTo: '', minPeople: 2, memberIds: new Set() },
   expandedHistoryMonths: new Set(), // 已確認練習歷史紀錄：展開的月份（預設只展開最新月）
 };
@@ -373,12 +374,13 @@ function toggleMatchDay(dateStr) {
   else state.expandedMatchDays.add(dateStr);
   renderMatchTab();
 }
-function openFilterPanel(type) {
-  state.activeFilterPanel = state.activeFilterPanel === type ? null : type;
+function toggleMatchFilterBar() {
+  state.matchFilterOpen = !state.matchFilterOpen;
+  if (!state.matchFilterOpen) state.activeFilterPanel = null;
   renderMatchTab();
 }
-function closeFilterPanel() {
-  state.activeFilterPanel = null;
+function openFilterPanel(type) {
+  state.activeFilterPanel = state.activeFilterPanel === type ? null : type;
   renderMatchTab();
 }
 function updateMatchFilter(field, value) {
@@ -809,27 +811,79 @@ function renderMatchTab() {
   const pMap = peopleById();
   const f = state.matchFilter;
 
-  // 四個獨立篩選按鈕
   const isDateActive = !!(f.dateFrom || f.dateTo);
   const isTimeActive = f.hourFrom !== '' || f.hourTo !== '';
   const isPeopleActive = f.minPeople > 2;
   const isMembersActive = f.memberIds.size > 0;
   const anyActive = isDateActive || isTimeActive || isPeopleActive || isMembersActive;
 
-  const pillHTML = (type, label, active) =>
-    `<button class="filter-pill ${active ? 'active' : ''} ${state.activeFilterPanel === type ? 'open' : ''}" onclick="openFilterPanel('${type}')">${label}</button>`;
+  const dropdownHTML = (type, label, active) => {
+    const isOpen = state.activeFilterPanel === type;
+    let panelBody = '';
+    if (type === 'date') {
+      panelBody = `
+        <div class="draft-row column">
+          <label>從</label>
+          <input type="date" value="${f.dateFrom}" onchange="updateMatchFilter('dateFrom', this.value)" />
+        </div>
+        <div class="draft-row column">
+          <label>到</label>
+          <input type="date" value="${f.dateTo}" onchange="updateMatchFilter('dateTo', this.value)" />
+        </div>
+      `;
+    } else if (type === 'time') {
+      const hourOptions = (selected) => Array.from({ length: 25 }, (_, h) => h)
+        .map((h) => `<option value="${h}" ${Number(selected) === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('');
+      panelBody = `
+        <div class="draft-row column">
+          <label>從</label>
+          <select onchange="updateMatchFilter('hourFrom', this.value)"><option value="">不限</option>${hourOptions(f.hourFrom)}</select>
+        </div>
+        <div class="draft-row column">
+          <label>到</label>
+          <select onchange="updateMatchFilter('hourTo', this.value)"><option value="">不限</option>${hourOptions(f.hourTo)}</select>
+        </div>
+      `;
+    } else if (type === 'people') {
+      panelBody = `
+        <div class="draft-row">
+          <label>至少幾人</label>
+          <div class="stepper">
+            <button onclick="updateMatchFilter('minPeople', ${Math.max(2, f.minPeople - 1)})">−</button>
+            <span>${f.minPeople}</span>
+            <button onclick="updateMatchFilter('minPeople', ${f.minPeople + 1})">＋</button>
+          </div>
+        </div>
+      `;
+    } else if (type === 'members') {
+      const chips = state.people.map((p) => {
+        const checked = f.memberIds.has(p.id);
+        return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleMatchFilterMember('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
+      }).join('');
+      panelBody = `<div class="chips-row">${chips}</div><p class="hint small">只列出這些人都有空的時段</p>`;
+    }
+    return `
+      <div class="filter-dropdown">
+        <button class="filter-pill ${active ? 'active' : ''} ${isOpen ? 'open' : ''}" onclick="openFilterPanel('${type}')">${label} <span class="filter-pill-caret">${isOpen ? '▾' : '▸'}</span></button>
+        ${isOpen ? `<div class="filter-dropdown-panel">${panelBody}</div>` : ''}
+      </div>
+    `;
+  };
 
   const filterBarHTML = `
-    <div class="filter-bar">
-      ${pillHTML('date', '📅 日期', isDateActive)}
-      ${pillHTML('time', '⏰ 時段', isTimeActive)}
-      ${pillHTML('people', '👥 人數', isPeopleActive)}
-      ${pillHTML('members', '🙋 成員', isMembersActive)}
-      ${anyActive ? `<button class="filter-pill filter-clear" onclick="resetMatchFilter()">清除</button>` : ''}
+    <div class="match-filter-row">
+      <button class="filter-toggle-main ${state.matchFilterOpen ? 'active' : ''}" onclick="toggleMatchFilterBar()">🔍 篩選</button>
+      ${state.matchFilterOpen ? `
+        <div class="filter-dropdown-group">
+          ${dropdownHTML('date', '📅 日期', isDateActive)}
+          ${dropdownHTML('time', '⏰ 時段', isTimeActive)}
+          ${dropdownHTML('people', '👥 人數', isPeopleActive)}
+          ${dropdownHTML('members', '🙋 成員', isMembersActive)}
+          ${anyActive ? `<button class="filter-pill filter-clear" onclick="resetMatchFilter()">清除</button>` : ''}
+        </div>
+      ` : ''}
     </div>
   `;
-
-  renderFilterDrawer();
 
   const listEl = document.getElementById('matchList');
   if (!state.loaded) {
@@ -874,70 +928,6 @@ function renderMatchTab() {
   }).join('');
 
   listEl.innerHTML = filterBarHTML + groupsHTML;
-}
-
-function renderFilterDrawer() {
-  const overlay = document.getElementById('filterOverlay');
-  const drawer = document.getElementById('filterDrawer');
-  const type = state.activeFilterPanel;
-
-  if (!type) {
-    overlay.style.display = 'none';
-    drawer.classList.remove('open');
-    return;
-  }
-
-  const f = state.matchFilter;
-  const titles = { date: '📅 篩選日期', time: '⏰ 篩選時段', people: '👥 篩選人數', members: '🙋 篩選成員' };
-  document.getElementById('filterDrawerTitle').textContent = titles[type];
-
-  let bodyHTML = '';
-  if (type === 'date') {
-    bodyHTML = `
-      <div class="draft-row column">
-        <label>從</label>
-        <input type="date" value="${f.dateFrom}" onchange="updateMatchFilter('dateFrom', this.value)" />
-      </div>
-      <div class="draft-row column">
-        <label>到</label>
-        <input type="date" value="${f.dateTo}" onchange="updateMatchFilter('dateTo', this.value)" />
-      </div>
-    `;
-  } else if (type === 'time') {
-    const hourOptions = (selected) => Array.from({ length: 25 }, (_, h) => h)
-      .map((h) => `<option value="${h}" ${Number(selected) === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('');
-    bodyHTML = `
-      <div class="draft-row column">
-        <label>從</label>
-        <select onchange="updateMatchFilter('hourFrom', this.value)"><option value="">不限</option>${hourOptions(f.hourFrom)}</select>
-      </div>
-      <div class="draft-row column">
-        <label>到</label>
-        <select onchange="updateMatchFilter('hourTo', this.value)"><option value="">不限</option>${hourOptions(f.hourTo)}</select>
-      </div>
-    `;
-  } else if (type === 'people') {
-    bodyHTML = `
-      <div class="draft-row">
-        <label>至少幾人</label>
-        <div class="stepper">
-          <button onclick="updateMatchFilter('minPeople', ${Math.max(2, f.minPeople - 1)})">−</button>
-          <span>${f.minPeople}</span>
-          <button onclick="updateMatchFilter('minPeople', ${f.minPeople + 1})">＋</button>
-        </div>
-      </div>
-    `;
-  } else if (type === 'members') {
-    const chips = state.people.map((p) => {
-      const checked = f.memberIds.has(p.id);
-      return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleMatchFilterMember('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
-    }).join('');
-    bodyHTML = `<div class="chips-row">${chips}</div><p class="hint small">只列出這些人都有空的時段</p>`;
-  }
-
-  document.getElementById('filterDrawerBody').innerHTML = bodyHTML;
-  overlay.style.display = 'block';
-  drawer.classList.add('open');
 }
 
 function matchRowHTML(row, pMap) {
