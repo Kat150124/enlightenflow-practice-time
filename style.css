@@ -451,6 +451,99 @@ body {
 .section-title { font-family: 'Noto Serif TC', serif; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
 .section-subtitle { font-size: 14px; font-weight: 700; color: var(--muted); margin: 4px 0 10px; }
 .history-subtitle { margin-top: 24px; }
+
+/* 可約時段：篩選面板 */
+.match-filter { margin-bottom: 16px; }
+.filter-toggle {
+  border: none;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(70,66,60,0.08);
+}
+.filter-toggle-caret { color: var(--muted); }
+.filter-panel {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 8px;
+  box-shadow: 0 1px 6px rgba(70,66,60,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.filter-panel .draft-row label { width: auto; white-space: nowrap; }
+.filter-panel .draft-row input[type="date"],
+.filter-panel .draft-row select { flex: 1; min-width: 0; }
+.filter-reset { align-self: flex-start; padding-left: 0; }
+.stepper { display: flex; align-items: center; gap: 12px; }
+.stepper button {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--bg);
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+}
+.stepper span { font-family: 'Noto Serif TC', serif; font-weight: 800; color: var(--rose); width: 16px; text-align: center; display: inline-block; }
+
+/* 可約時段：依日期分組收合 */
+.match-day-group { margin-bottom: 14px; }
+.match-day-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--card);
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(70,66,60,0.08);
+  margin-bottom: 8px;
+}
+.match-day-title { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 15px; }
+.match-day-count { font-size: 12px; color: var(--muted); margin-right: auto; margin-left: 10px; }
+.match-day-caret { color: var(--muted); font-size: 12px; }
+.match-day-body { display: flex; flex-direction: column; gap: 10px; }
+.already-booked-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sage);
+  background: rgba(143,160,137,0.15);
+  border-radius: 10px;
+  padding: 5px 10px;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+/* 已確認練習：歷史紀錄依月份分組收合 */
+.history-month-group { margin-bottom: 10px; }
+.history-month-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(70,66,60,0.08);
+  margin-bottom: 8px;
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.history-month-count { font-size: 12px; color: var(--muted); font-weight: 400; margin-right: auto; margin-left: 10px; font-family: 'Nunito', sans-serif; }
+.history-month-body { display: flex; flex-direction: column; gap: 8px; }
 .session-card-wrap {
   background: var(--card);
   border-radius: 22px;

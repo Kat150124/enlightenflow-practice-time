@@ -10,6 +10,7 @@ const OVERNIGHT_END_SLOT = 14; // 00:00-07:00 為「夜練／過夜」時段，�
 const ROW_HEIGHT = 30;
 const MIN_OVERLAP = 2; // 至少幾人重疊才算「可約時段」
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+const DAY_COLORS = ['#B08D82', '#8FA089', '#7B95AA', '#C4A265', '#9B84A8', '#5F8A82', '#A85D4D'];
 const QUICK_JUMPS = [
   { label: '夜練', hour: 0 },
   { label: '早上', hour: 8 },
@@ -32,6 +33,10 @@ const state = {
   editSessionId: null,
   editDraft: null,
   pendingChanges: {}, // 拉選/點選後尚未儲存的變更，key: `${dateStr}_${slot}`, value: 'add' | 'remove'
+  collapsedMatchDays: new Set(), // 可約時段：被收合的日期
+  matchFilterOpen: false, // 可約時段篩選面板是否展開
+  matchFilter: { dateFrom: '', dateTo: '', hourFrom: '', hourTo: '', minPeople: 2 },
+  expandedHistoryMonths: new Set(), // 已確認練習歷史紀錄：展開的月份（預設只展開最新月）
 };
 
 // ---------- 日期工具 ----------
@@ -360,6 +365,33 @@ function switchTab(tab) {
   closeSlotDetail();
   render();
 }
+
+// ---------- 可約時段：日期收合 / 篩選 ----------
+function toggleMatchDay(dateStr) {
+  if (state.collapsedMatchDays.has(dateStr)) state.collapsedMatchDays.delete(dateStr);
+  else state.collapsedMatchDays.add(dateStr);
+  renderMatchTab();
+}
+function toggleMatchFilterPanel() {
+  state.matchFilterOpen = !state.matchFilterOpen;
+  renderMatchTab();
+}
+function updateMatchFilter(field, value) {
+  state.matchFilter[field] = value;
+  renderMatchTab();
+}
+function resetMatchFilter() {
+  state.matchFilter = { dateFrom: '', dateTo: '', hourFrom: '', hourTo: '', minPeople: 2 };
+  renderMatchTab();
+}
+
+// ---------- 已確認練習歷史紀錄：月份收合 ----------
+function toggleHistoryMonth(key) {
+  if (state.expandedHistoryMonths.has(key)) state.expandedHistoryMonths.delete(key);
+  else state.expandedHistoryMonths.add(key);
+  renderConfirmedTab();
+}
+
 function setViewMode(mode) {
   state.viewMode = mode;
   state.monthDrillDate = null;
@@ -397,7 +429,8 @@ function scrollToHour(hour) {
 }
 
 // ---------- 可約時段 ----------
-function computeMatches() {
+function computeMatches(filter) {
+  filter = filter || {};
   const byDate = {};
   Object.entries(state.availability).forEach(([key, ids]) => {
     if (!ids || ids.length === 0) return;
@@ -422,9 +455,16 @@ function computeMatches() {
     if (cur) ranges.push(cur);
   });
   const now = new Date();
+  const minPeople = filter.minPeople || MIN_OVERLAP;
+  const hourFromSlot = filter.hourFrom !== '' && filter.hourFrom != null ? Number(filter.hourFrom) * 2 : null;
+  const hourToSlot = filter.hourTo !== '' && filter.hourTo != null ? Number(filter.hourTo) * 2 : null;
   return ranges
-    .filter((r) => r.ids.length >= MIN_OVERLAP)
+    .filter((r) => r.ids.length >= minPeople)
     .filter((r) => slotEndDateTime(r.dateStr, r.endSlot) > now)
+    .filter((r) => !filter.dateFrom || r.dateStr >= filter.dateFrom)
+    .filter((r) => !filter.dateTo || r.dateStr <= filter.dateTo)
+    .filter((r) => hourFromSlot === null || r.endSlot > hourFromSlot)
+    .filter((r) => hourToSlot === null || r.startSlot < hourToSlot)
     .sort((a, b) => {
       const ak = `${a.dateStr}${String(a.startSlot).padStart(3, '0')}`;
       const bk = `${b.dateStr}${String(b.startSlot).padStart(3, '0')}`;
@@ -753,75 +793,143 @@ function monthGridHTML() {
 }
 
 function renderMatchTab() {
-  const matches = computeMatches();
+  const matches = computeMatches(state.matchFilter);
   const hasAnyAvailability = Object.keys(state.availability).length > 0;
   const pMap = peopleById();
+  const f = state.matchFilter;
+
+  // 篩選面板
+  const hourOptions = (selected) => Array.from({ length: 25 }, (_, h) => h)
+    .map((h) => `<option value="${h}" ${Number(selected) === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('');
+  const filterPanelHTML = `
+    <div class="match-filter">
+      <button class="filter-toggle" onclick="toggleMatchFilterPanel()">🔍 篩選 <span class="filter-toggle-caret">${state.matchFilterOpen ? '▾' : '▸'}</span></button>
+      ${state.matchFilterOpen ? `
+        <div class="filter-panel">
+          <div class="draft-row">
+            <label>日期</label>
+            <input type="date" value="${f.dateFrom}" onchange="updateMatchFilter('dateFrom', this.value)" />
+            <span class="to-label">到</span>
+            <input type="date" value="${f.dateTo}" onchange="updateMatchFilter('dateTo', this.value)" />
+          </div>
+          <div class="draft-row">
+            <label>時間</label>
+            <select onchange="updateMatchFilter('hourFrom', this.value)"><option value="">不限</option>${hourOptions(f.hourFrom)}</select>
+            <span class="to-label">到</span>
+            <select onchange="updateMatchFilter('hourTo', this.value)"><option value="">不限</option>${hourOptions(f.hourTo)}</select>
+          </div>
+          <div class="draft-row">
+            <label>至少幾人</label>
+            <div class="stepper">
+              <button onclick="updateMatchFilter('minPeople', ${Math.max(2, f.minPeople - 1)})">−</button>
+              <span>${f.minPeople}</span>
+              <button onclick="updateMatchFilter('minPeople', ${f.minPeople + 1})">＋</button>
+            </div>
+          </div>
+          <button class="btn-text filter-reset" onclick="resetMatchFilter()">重設篩選</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
 
   const listEl = document.getElementById('matchList');
   if (!state.loaded) {
-    listEl.innerHTML = `<p class="hint">⏳ 讀取中…</p>`;
-  } else if (matches.length === 0) {
-    listEl.innerHTML = `<p class="hint">${
+    listEl.innerHTML = filterPanelHTML + `<p class="hint">⏳ 讀取中…</p>`;
+    return;
+  }
+  if (matches.length === 0) {
+    listEl.innerHTML = filterPanelHTML + `<p class="hint">${
       !hasAnyAvailability
         ? '還沒有人登記任何時段，先到「日曆登記」頁面填寫吧！'
-        : '目前沒有重疊 2 人以上的未來時段。'
+        : '目前沒有符合條件的時段，試著調整篩選看看。'
     }</p>`;
-  } else {
-    listEl.innerHTML = matches.map((row) => {
-      const d = parseDateStr(row.dateStr);
-      const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
-      const key = `${row.dateStr}_${row.startSlot}_${row.endSlot}`;
-      const isOpen = state.draftKey === key;
-      const chips = row.ids.map((id) => `<span class="tag" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
-
-      let draftHTML = '';
-      if (isOpen && state.draft) {
-        const d0 = state.draft;
-        const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s).map((s) => `<option value="${s}" ${d0.startSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
-        const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s + 1).map((s) => `<option value="${s}" ${d0.endSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
-        const participantChips = state.people.map((p) => {
-          const checked = d0.participantIds.has(p.id);
-          return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleDraftParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
-        }).join('');
-
-        draftHTML = `
-          <div class="draft-form">
-            <div class="draft-row">
-              <label>日期</label>
-              <input type="date" value="${d0.dateStr}" oninput="updateDraftField('dateStr', this.value)" />
-            </div>
-            <div class="draft-row">
-              <label>時間</label>
-              <select onchange="updateDraftField('startSlot', this.value)">${startOptions}</select>
-              <span class="to-label">到</span>
-              <select onchange="updateDraftField('endSlot', this.value)">${endOptions}</select>
-            </div>
-            <div class="draft-row column">
-              <label>參加者</label>
-              <div class="chips-row">${participantChips}</div>
-            </div>
-            <input class="note-input" placeholder="備註（選填）" oninput="updateDraftField('note', this.value)" />
-            <div class="draft-actions">
-              <button class="btn-primary" onclick="confirmSessionSave()">確認練習時間</button>
-              <button class="btn-text" onclick="cancelDraft()">取消</button>
-            </div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="match-card">
-          <div class="match-card-header">
-            <span class="match-title">${toShortDate(row.dateStr)}（週${wd}）${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
-            <span class="match-count">${row.ids.length}人</span>
-            <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
-          </div>
-          <div class="chips-row">${chips}</div>
-          ${draftHTML}
-        </div>
-      `;
-    }).join('');
+    return;
   }
+
+  // 依日期分組
+  const groups = [];
+  matches.forEach((row) => {
+    let g = groups[groups.length - 1];
+    if (!g || g.dateStr !== row.dateStr) {
+      g = { dateStr: row.dateStr, rows: [] };
+      groups.push(g);
+    }
+    g.rows.push(row);
+  });
+
+  const groupsHTML = groups.map((g, idx) => {
+    const d = parseDateStr(g.dateStr);
+    const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
+    const collapsed = state.collapsedMatchDays.has(g.dateStr);
+    const color = DAY_COLORS[idx % DAY_COLORS.length];
+    return `
+      <div class="match-day-group">
+        <button class="match-day-header" style="border-left: 4px solid ${color}" onclick="toggleMatchDay('${g.dateStr}')">
+          <span class="match-day-title">${toShortDate(g.dateStr)}（週${wd}）</span>
+          <span class="match-day-count">${g.rows.length} 個時段</span>
+          <span class="match-day-caret">${collapsed ? '▸' : '▾'}</span>
+        </button>
+        ${collapsed ? '' : `<div class="match-day-body">${g.rows.map((row) => matchRowHTML(row, pMap)).join('')}</div>`}
+      </div>
+    `;
+  }).join('');
+
+  listEl.innerHTML = filterPanelHTML + groupsHTML;
+}
+
+function matchRowHTML(row, pMap) {
+  const key = `${row.dateStr}_${row.startSlot}_${row.endSlot}`;
+  const isOpen = state.draftKey === key;
+  const chips = row.ids.map((id) => `<span class="tag" style="background:${pMap[id]?.color || '#ccc'}">${escapeHtml(pMap[id]?.name || '未知')}</span>`).join('');
+  const alreadyBooked = state.sessions.some((s) => s.dateStr === row.dateStr && row.startSlot < s.endSlot && row.endSlot > s.startSlot);
+
+  let draftHTML = '';
+  if (isOpen && state.draft) {
+    const d0 = state.draft;
+    const startOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s).map((s) => `<option value="${s}" ${d0.startSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
+    const endOptions = Array.from({ length: VISIBLE_SLOT_COUNT }, (_, s) => VISIBLE_START_SLOT + s + 1).map((s) => `<option value="${s}" ${d0.endSlot === s ? 'selected' : ''}>${slotToLabel(s)}</option>`).join('');
+    const participantChips = state.people.map((p) => {
+      const checked = d0.participantIds.has(p.id);
+      return `<button class="chip small" style="background:${checked ? p.color : '#fff'};color:${checked ? '#fff' : 'var(--ink)'};box-shadow:0 0 0 2px ${checked ? p.color : 'var(--border)'}" onclick="toggleDraftParticipant('${p.id}')">${checked ? '✓ ' : ''}${escapeHtml(p.name)}</button>`;
+    }).join('');
+
+    draftHTML = `
+      <div class="draft-form">
+        <div class="draft-row">
+          <label>日期</label>
+          <input type="date" value="${d0.dateStr}" oninput="updateDraftField('dateStr', this.value)" />
+        </div>
+        <div class="draft-row">
+          <label>時間</label>
+          <select onchange="updateDraftField('startSlot', this.value)">${startOptions}</select>
+          <span class="to-label">到</span>
+          <select onchange="updateDraftField('endSlot', this.value)">${endOptions}</select>
+        </div>
+        <div class="draft-row column">
+          <label>參加者</label>
+          <div class="chips-row">${participantChips}</div>
+        </div>
+        <input class="note-input" placeholder="備註（選填）" oninput="updateDraftField('note', this.value)" />
+        <div class="draft-actions">
+          <button class="btn-primary" onclick="confirmSessionSave()">確認練習時間</button>
+          <button class="btn-text" onclick="cancelDraft()">取消</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="match-card">
+      <div class="match-card-header">
+        <span class="match-title">${slotToLabel(row.startSlot)}–${slotToLabel(row.endSlot)}</span>
+        <span class="match-count">${row.ids.length}人</span>
+        <button class="btn-schedule ${isOpen ? 'active' : ''}" onclick="openDraft('${row.dateStr}', ${row.startSlot}, ${row.endSlot}, '${row.ids.join(',')}')">🎯 安排練習</button>
+      </div>
+      ${alreadyBooked ? `<div class="already-booked-badge">✅ 這個時段已經安排練習了</div>` : ''}
+      <div class="chips-row">${chips}</div>
+      ${draftHTML}
+    </div>
+  `;
 }
 
 function renderConfirmedTab() {
@@ -852,9 +960,39 @@ function renderConfirmedTab() {
     ? `<p class="hint small">目前沒有即將進行的練習</p>`
     : upcoming.map((s) => sessionCardHTML(s, pMap, false)).join('');
 
-  const historyHTML = history.length === 0
-    ? `<p class="hint small">還沒有歷史紀錄</p>`
-    : history.map((s) => sessionCardHTML(s, pMap, true)).join('');
+  let historyHTML;
+  if (history.length === 0) {
+    historyHTML = `<p class="hint small">還沒有歷史紀錄</p>`;
+  } else {
+    const monthGroups = [];
+    history.forEach((s) => {
+      const monthKey = s.dateStr.slice(0, 7); // "2026-07"
+      let g = monthGroups[monthGroups.length - 1];
+      if (!g || g.key !== monthKey) {
+        g = { key: monthKey, sessions: [] };
+        monthGroups.push(g);
+      }
+      g.sessions.push(s);
+    });
+    // 預設只展開最新一個月（使用者還沒手動收合/展開過的話）
+    if (state.expandedHistoryMonths.size === 0 && monthGroups.length > 0) {
+      state.expandedHistoryMonths.add(monthGroups[0].key);
+    }
+    historyHTML = monthGroups.map((g) => {
+      const [y, m] = g.key.split('-');
+      const expanded = state.expandedHistoryMonths.has(g.key);
+      return `
+        <div class="history-month-group">
+          <button class="history-month-header" onclick="toggleHistoryMonth('${g.key}')">
+            <span>${y}年${Number(m)}月</span>
+            <span class="history-month-count">${g.sessions.length} 筆</span>
+            <span class="match-day-caret">${expanded ? '▾' : '▸'}</span>
+          </button>
+          ${expanded ? `<div class="history-month-body">${g.sessions.map((s) => sessionCardHTML(s, pMap, true)).join('')}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
 
   confirmedEl.innerHTML = `
     <p class="section-subtitle">🔜 即將進行</p>
